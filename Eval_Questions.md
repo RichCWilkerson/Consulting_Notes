@@ -1095,6 +1095,12 @@ some features never made it to production, but at Ally bank -> ...
 
 
 # Will Daily Routine
+- not every day is the same, but this is a general outline of a typical day
+- Jr -> look at tickets and changes and responding to PRs
+- Sr -> what are the changes being made by backend team -> update the point of contact with other teams (UI/UX, QA, backend, iOS, etc.)
+- work with scrum master / PM to prioritize tasks and blockers for the team
+  - figure out time estimates for tasks
+
 - 9am start day
 - 9:30 standup with offshore (30min - 1 hour)
   - scrum master runs this
@@ -1115,3 +1121,13 @@ Bi-Week:
 - friday: retrospective -> substitute for grooming, but lose end of day work if we do both
 - product demo - as needed (typically based on how many features are done) typical 1 time every other month
 
+
+
+---
+
+Koin -> runtime -> has more errors at runtime if something is not configured properly
+Hilt -> compile time -> catches more errors at compile time if something is not configured properly
+- this means that most people prefer Hilt over Koin for larger projects where catching errors early is important
+- KMP / KMM -> Koin is preferred since Hilt does not support KMP/KMM yet
+  - need to be more careful with Koin since it is runtime errors
+  - Ktor as well

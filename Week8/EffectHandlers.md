@@ -99,6 +99,22 @@ fun ProfileScreen(userId: String, viewModel: ProfileViewModel = viewModel()) {
         // this block is the coroutine 
         viewModel.loadProfile(userId) // side effect: network call
     }
+    
+    // key1 = true means this will run once when entering composition (won't re-run unless the composable leaves and re-enters)
+    // re-entering could happen on navigation back to this screen or recomposition if this composable is removed and re-added
+    LaunchedEffect(key1 = true) {
+        // now this is not collected on every recomposition, only once when entering composition
+        viewModel.sharedFlow.collect { event ->
+            when (event) {
+                is LaunchedEffectViewModel.ScreenEvents.ShowSnackbar -> {
+                    // Show snackbar with event.message
+                }
+                is LaunchedEffectViewModel.ScreenEvents.Navigate -> {
+                    // Navigate to event.route
+                }
+            }
+        }
+    }
 
     when (profileState) {
         is UiState.Loaded -> {
@@ -125,11 +141,26 @@ class LaunchedEffectViewModel: ViewModel() {
             _sharedFlow.emit(ScreenEvents.ShowSnackbar("Hello from ViewModel"))
         }
     }
-    sealed class {
+    sealed class ScreenEvents {
         data class ShowSnackbar(val message: String): ScreenEvents()
         data class Navigate(val route: String): ScreenEvents()
     }
 }
+
+// Animation example
+@Composable 
+fun Animation(counter: Int) {
+    val animatable = remember { Animatable(0f) }
+    
+    LaunchedEffect(key1 = counter) {
+        // animateTo is a suspend function, so we can call it inside LaunchedEffect (coroutine)
+        animatable.animateTo(
+            targetValue = counter.toFloat(),
+            animationSpec = tween(durationMillis = 1000, easing = LinearEasing)
+        )
+    }
+}
+
 ```
  
 ---
@@ -142,6 +173,27 @@ class LaunchedEffectViewModel: ViewModel() {
   - Don’t perform heavy or blocking work here; it runs often.
   - Not for launching coroutines or I/O; use LaunchedEffect or a ViewModel for that.
 
+- FIRST OFF -> not used often
+- typically for 3rd party libraries or external systems that need to be informed of state changes in Compose
+- common use cases:
+  - updating analytics systems with the latest UI state
+  - firebase user (not a compose state) properties -> need to update the firebase user properties when compose state changes
+  - informing imperative UI frameworks (e.g., RecyclerView adapters) of state changes
+
+
+```kotlin
+@Composable
+fun SideEffectDemo(counter: Int) {
+    // This composable displays a counter and updates an external analytics system
+    Text("Counter: $counter")
+    // SideEffect runs after every recomposition
+    SideEffect {
+        // Update external analytics system with the latest counter value
+        AnalyticsSystem.logCounterValue(counter)
+    }
+}
+```
+
 ---
 
 ## DisposableEffect
@@ -151,6 +203,88 @@ class LaunchedEffectViewModel: ViewModel() {
 - **Notes**:
   - Choose keys that uniquely identify what’s being managed so disposal/re‑setup happens correctly.
   - To avoid stale captures in callbacks, prefer capturing latest values via stable references (e.g., rememberUpdatedState in surrounding code), not by re‑creating listeners every recomposition.
+
+- works like LaunchedEffect but for non-coroutine side effects that need cleanup 
+- What needs to be disposed of?
+  - listeners (e.g., location updates, sensor updates, broadcast receivers)
+  - resources (e.g., camera, microphone, file handles)
+  - anything that needs to be cleaned up to avoid memory leaks or unnecessary resource usage
+
+```kotlin
+@Composable
+fun DisposableEffectDemo() {
+    val lifecycleOwner = LocalLifecycleOwner.current
+    // this is BAD -> observer needs to be disposed of when the composable leaves composition
+    // we will wrap this in DisposableEffect to ensure proper cleanup
+    val observer = LifecycleEventObserver { _, event ->
+        when (event) {
+            Lifecycle.Event.ON_START -> {
+                // Handle onStart event
+            }
+            Lifecycle.Event.ON_STOP -> {
+                // Handle onStop event
+            }
+            else -> {}
+        }
+    }
+    DisposableEffect(key1 = lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> {
+                    // Handle onStart event
+                }
+                Lifecycle.Event.ON_STOP -> {
+                    // Handle onStop event
+                }
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        // onDispose block is called when the composable leaves composition or key changes
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+}
+```
+
+---
+
+## rememberUpdatedState
+- **Purpose**: Capture the latest value of a variable in a stable reference that can be used in long‑lived callbacks or effects without causing re‑creation.
+- **Behavior**: Returns a State<T> that always reflects the most recent value passed to it.
+- **Use for**: Avoiding stale captures in callbacks registered in DisposableEffect or other long‑lived contexts.
+- **Notes**:
+    - Use inside DisposableEffect or similar to ensure callbacks see the latest values without needing to re‑register them.
+    - Helps prevent memory leaks or unnecessary re‑registrations due to changing dependencies.
+
+- You need rememberUpdatedState ONLY WHEN: A coroutine runs longer than one composition AND depends on changing values.
+- When you do NOT need rememberUpdatedState: If you want the coroutine to restart when the value changes
+
+```kotlin
+@Composable
+fun RememberUpdatedStateDemo(
+    searchQuery: String,
+    filter: String,
+) {
+    val viewModel: SearchViewModel = viewModel()
+    // without rememberUpdatedState, filter could be stale if it changes
+    val currentFilter by rememberUpdatedState(newValue = filter)
+    
+    // LaunchedEffect runs only once, rememberUpdatedState ensures that the latest filter is used
+    
+    // LaunchedEffect will rerun only when searchQuery changes
+    // filter changes will not restart LaunchedEffect (won't cancel and relaunch the search)
+    // but the latest filter value will be used the next time the search is performed because of rememberUpdatedState
+    // LaunchedEffect captures values at the moment it starts, not the moment it reruns.
+    // LaunchedEffect only responds to keys. Everything not in the key can become stale.
+    // rememberUpdatedState is how you keep non-key values fresh without causing restarts.
+    LaunchedEffect(key1 = searchQuery) {
+        delay(5000L) // wait for 5 seconds
+        viewModel.search(searchQuery, currentFilter) // use latest filter value
+    }
+}
+```
 
 ---
 
@@ -162,7 +296,37 @@ class LaunchedEffectViewModel: ViewModel() {
   - Don’t launch coroutines directly in the composable body; trigger them from events or in LaunchedEffect.
   - For work that should outlive the composable (e.g., across rotations), use viewModelScope instead.
 
+- a lifecycle aware coroutine scope, only use on callbacks (e.g. onClick) or LaunchedEffect to avoid launching on every recomposition
+  - could be used for a search button to launch a search when clicked
+
+- Why do we create a val myScope = rememberCoroutineScope() instead of just calling rememberCoroutineScope().launch {...} directly in the onClick?
+  - because rememberCoroutineScope() creates a new scope every time it's called, so if we call it directly in the onClick, we would be creating a new scope every time the button is clicked, 
+  - which is not what we want. By creating a val myScope = rememberCoroutineScope(), we create a single scope that can be reused for multiple clicks.
+
+```kotlin
+@Composable
+fun SearchButton(viewModel: SearchViewModel = viewModel()) {
+    val myScope = rememberCoroutineScope()
+    // DO NOT launch coroutine here in the composable body (BAD!!!)
+    myScope.launch {
+        viewModel.performSearch() 
+    }
+    
+    Button(onClick = {
+        // launch a coroutine in response to button click
+        myScope.launch {
+            viewModel.performSearch() // side effect: network call
+        }
+    }) {
+        Text("Search")
+    }
+}
+    
+
+```
+
 ---
+
 
 ## produceState
 - **Purpose**: Bridge asynchronous sources into a Compose State<T> using a coroutine that updates the state value over time.
@@ -172,15 +336,96 @@ class LaunchedEffectViewModel: ViewModel() {
   - Prefer collectAsState()/collectAsStateWithLifecycle for Flow/LiveData; use produceState when those aren’t available.
   - Initialize with a sensible default; handle cancellation and errors to avoid stuck UI states.
 
+- very similar to LaunchedEffect, but instead of just running a coroutine, it produces a State<T> that can be observed in the UI
+- useful for creating state from asynchronous data sources or computations:
+    - 
+
+```kotlin
+@Composable 
+fun ProduceSateDemo(countUpTo: Int) : State<Int> {
+    return produceState(initialValue = 0) {
+        while(value < countUpTo) {
+            delay(1000L) // wait for 1 second -> delay is a suspend function
+            value += 1 // update the state value
+        }
+    }
+}
+// similar to using flow, these two are equivalent
+@Composable
+fun FlowDemo(countUpTo: Int) : State<Int> {
+    return flow<Int> {
+        var value = 0
+        while(value < countUpTo) {
+            delay(1000L)
+            value += 1
+            emit(value)
+        }
+    }.collectAsState(initial = 0)
+}
+```
+
+---
+
+## derivedStateOf
+- **Purpose**: Create a state that derives its value from other states, recalculating only when dependencies change.
+- **Behavior**: Lazily computes the derived value and caches it until any of the source states change.
+- **Use for**: Optimizing expensive computations based on multiple state reads to avoid unnecessary recompositions.
+- **Notes**:
+  - Use inside composables or remember blocks to create derived state.
+  - Helps improve performance by preventing redundant calculations during recompositions.
+  - Be cautious of overusing; only apply when the derived computation is non-trivial.
+  - Ideal for scenarios like filtering/sorting lists based on multiple state inputs.
+  - Can be combined with remember to cache the derived state across recompositions.
+
+```kotlin
+@Composable
+fun DerivedStateOfDemo() {
+    var counter by remember { mutableStateOf(0) }
+    // every time recomposition happens, this line will be re-executed
+    // imagine if this computation is expensive (e.g., filtering a large list)
+    // every time counter changes, counterText will be recomputed concatenating the string
+    // this will lead to results like: "The counter is 0123..."
+    val counterText = "The counter is $counter"
+    
+    // to avoid recomputing counterText on every recomposition, we can use derivedStateOf
+    // this will only recompute when counter changes and provide a cached value otherwise
+    val optimizedCounterText by derivedStateOf {
+        "The counter is $counter"
+    }
+    
+    Button(onClick = { counter++ }) {
+        Text(counterText)
+        Text(optimizedCounterText)
+    }
+}
+```
+
 ---
 
 ## snapshotFlow
 - **Purpose**: Convert reads of Compose state into a cold Flow that emits when the read state changes.
+  - flow has backpressure operators (debounce, buffer, etc.) that can be applied to control emissions 
 - **Behavior**: Captures Snapshot state reads inside its block and emits a new value whenever any of those reads change; applies distinct‑until‑changed semantics.
 - **Use for**: Integrating Compose state changes with Flow operators (debounce/buffer/combine) or external reactive consumers.
 - **Notes**:
   - Collect snapshotFlow in a coroutine (e.g., via LaunchedEffect or a ViewModel) and keep the block lightweight.
   - Be mindful of rapid emissions; apply backpressure operators (debounce/sample) if needed.
 
+```kotlin
+@Composable
+fun SnapshotFlowDemo() {
+    val scaffoldState = rememberScaffoldState()
+    
+    LaunchedEffect(key1 = scaffoldState) {
+        snapshotFlow { scaffoldState.snackbarHostState }
+            .mapNotNull { it.currentSnackbarData?.message }
+            .distinctUntilChanged()
+            .collect { message ->
+                println("New snackbar message: $message")
+            }
+    }
+}
+```
 
-
+javni with will
+ivan with armando

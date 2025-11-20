@@ -1,32 +1,30 @@
 
+# Background
+- born 11/11/1990
+- graduated hs 2009
+- started degree 2009
+
 # Pitch
 
-Hi, my name is Christian Wilkerson, and I’m currently a Lead Android Developer at Neiman Marcus with over 13 years of experience in mobile application development across industries like FINANCE, LUXURY RETAIL, AUTOMOTIVE, and TRAVEL.
+Hi, my name is Christian like the religion, and I’m currently a Lead Android Developer at Neiman Marcus with over 13 years of experience in mobile application development across industries like FINANCE, LUXURY RETAIL, AUTOMOTIVE, and TRAVEL.
 
-In my current role,
-1. I architected and implemented a scalable Android app using Clean Architecture and MVVM, breaking the codebase into feature-based Gradle modules for faster release cycles and easier maintenance.
+In my current role I was tasked with modernizing and scaling the app,
+1. I architected and implemented a scalable Android app using Clean Architecture and MVVM, working with the team to identify module boundaries, then breaking the codebase into feature-based Gradle modules -> improving feature release cycles and reducing build times by about 30%.
 3. To modernize the UI, I introduced Jetpack Compose, starting with a hybrid XML + Compose approach before fully migrating new features, which cut UI development time and improved design parity with Figma.
 5. On the backend side, I implemented secure payment and authentication flows using tokenization, SSL pinning, and biometric verification, and
 6. improved app performance by reducing load times by about 25% through lazy loading, image optimization with Coil, and background initialization.
-7. I’ve also set up CI/CD pipelines using GitLab CI, ensuring smooth, automated testing and deployments across QA and production.
+7. I’ve also set up CI/CD pipelines using Github Actions, ensuring smooth, automated testing and deployments across QA and production.
 8. Along the way, I’ve mentored developers, conducted code reviews, and helped shape best practices across the team.
 
-I’m deeply passionate about building scalable, secure, and user-centric apps that blend strong architecture with great design. As my current project wraps up, I’m now looking for my next challenge, and I believe [Client/Company Name] would be a fantastic place to continue growing my career and contributing to meaningful innovation in mobile development.
-
-
+I really enjoy building useful and engaging mobile experiences that solve real user problems.
+As my current project wraps up, I’m now looking for my next challenge, and I believe [Client/Company Name] 
+would be a fantastic place to continue growing my career and contributing to meaningful innovation in mobile development.
 
 ## Additions
 1. I also worked on AR-based virtual try-on and personalized shopping experiences, integrating ARCore SDK to enhance user engagement.
       → removed for now, was overwhelmed with amount of information and pitch went long → will add it back into pitch when I’m more comfortable with all the other topics and can then look into this tech
 2. I also led the adoption of Kotlin Multiplatform Mobile (KMM) to share business logic and analytics across Android and iOS, collaborating closely with our offshore team in India.
       → tempted to change this to current prototyping and presenting use case for the team
-
-## why migrate from xml to compose?
-1. plays nicer with Kotlin libraries → tying coroutines to a layout, better integration with modern dev
-2. less boilerplate → common/core components
-3. previews
-4. performance → compose only re-renders what changes
-5. modern models → MVI, not sure it is possible with xml
 
 ---
 
@@ -35,6 +33,113 @@ I’m deeply passionate about building scalable, secure, and user-centric apps t
 ---
 
 ## 🧩 Architecture & Technical Depth
+
+### Ensure MVVM is understood
+- Model: data layer (repositories, data sources, network, DB)
+- View: UI layer (Activities, Fragments, Composables)
+- ViewModel: presentation layer (state management, business logic, exposes state to View via StateFlow/LiveData)
+- Unidirectional data flow: View observes ViewModel state; ViewModel interacts with Model; Model provides data to ViewModel.
+
+- migrated a few workflows from MVP to MVVM
+  - separated data/business logic from UI
+  - ViewModel exposes StateFlow for View to observe
+  - used Coroutines for async data fetching in ViewModel
+  - improved testability by mocking ViewModel and Model layers
+
+### Monolith -> Modular Clean Architecture Narrative
+Narrative STAR:
+Situation
+Worked in a large, legacy Android codebase with tight coupling, long build times, and poor feature ownership.
+Goal: modernize the architecture to improve scalability, testability, and team velocity.
+Took technical leadership on the migration to a Clean Architecture + modularized structure (Kotlin, Coroutines, Flow, Hilt, Room, Retrofit, Compose).
+
+Task
+Design the new architecture, define module boundaries, and lead the phased migration strategy.
+Create new Gradle modules and dependency rules.
+Establish DI patterns, shared core components, and stable navigation/data flows.
+Mentor the team on the new architecture and best practices.
+
+Action
+1. Deep analysis + boundary identification
+  - Mapped out existing packages, identified natural seams (home, shop, designers, account, shopping bag).
+  - Catalogued shared resources (theme, typography, networking, domain models).
+  - Flagged risky areas where features tightly depended on each other.
+
+2. Created clear module structure
+  - Built core-ui, core-domain, core-network, core-designsystem, and individual feature-* modules.
+  - Enforced strict dependency rules:
+    - Features → Core (one-direction)
+    - Features cannot depend on each other
+    - Core has zero feature awareness
+
+3. Ensured each feature was independently navigable
+To avoid cross-module fragment leaks and backstack bugs:
+  - Each feature module got its own Activity, its own NavHost, and its own navGraph. 
+  - Exposed only entry points (like FeatureEntry interfaces) to the app shell.
+  - Define navigation contracts in core-navigation so modules used typed routes, not raw fragment transactions.
+    - TODO: what does this mean?
+
+4. Hilt + DI consistency across modules
+Team struggled early with cross-module Hilt scoping failures.
+  - Standardized DI using:
+    - @Module in core for interfaces 
+    - @Binds in feature modules for implementations 
+    - Component scopes documented clearly
+  - Held a workshop after teammates repeatedly created circular dependencies and multi-binding errors.
+
+5. Incremental migration strategy
+To avoid a “big bang” rewrite, phased the migration:
+  - Each feature retained temporary legacy Activities during transition.
+  - Used ComposeView inside legacy XML screens to slowly roll in Compose.
+  - Shared ViewModels across modules via Hilt-assisted factories.
+  - Feature flags used to ship partially migrated modules safely.
+    - TODO: what are feature flags? how do they help safely migrate?
+
+6. Team failures / bottlenecks + resolutions
+
+Failure 1: Accidental circular dependencies
+Some devs imported feature modules into each other, causing build failures and confusion.
+Resolution:
+  - Added lint & Gradle checks to enforce allowed dependencies. 
+  - Created a diagram and documentation explaining the allowed graph. 
+  - Code reviews specifically checked dependency direction.
+
+Failure 2: Theme/style fragmentation
+Teams recreated colors, paddings, or typography inside feature modules.
+This caused UI inconsistency and unnecessary duplication.
+Resolution:
+  - Moved all styling, typography, spacing, shape tokens into core-designsystem. 
+  - Introduced a pre-commit check to prevent re-declaring colors/styles.
+  - Setup flow for adding new tokens to core-designsystem. (Talk to UI/UX first, then core module PR, then feature module PRs to consume.)
+
+Failure 3: Build time spikes
+Early modularization actually made things worse, because some modules weren’t isolated and changes cascaded.
+Resolution:
+  - Split core into smaller, more stable modules. 
+  - Introduced API/implementation separation for modules. 
+  - After stabilization, Gradle was able to build only the affected modules → resulting in the 30% improvement.
+
+Failure 4: Team confusion around navigation
+Some devs attempted to navigate directly to other features' screens → broke modular boundaries.
+Resolution:
+  - Introduced FeatureEntry interfaces with typed parameters. 
+  - App shell resolves entries using DI; features never reference each other.
+
+Failure 5: Resistance to change
+Some teammates were anxious about Compose, modularization, and new DI patterns.
+Resolution:
+  - Ran weekly workshops with live coding. 
+  - Pair programmed with resistant teammates. 
+  - Documented patterns, anti-patterns, and template files they could copy.
+
+After 2–3 iterations, team skill and confidence noticeably improved.
+Result
+Build times improved by ~30% because Gradle could rebuild only the modules changed, instead of the entire monolithic app. Modular boundaries reduced interdependencies and enabled better incremental builds.
+Team velocity increased: features were isolated, easier to reason about, and safer to iterate on.
+Testability improved thanks to clear separation of concerns and stable contracts between layers.
+Consistency and reuse increased through shared theming, UI components, and models in the core module.
+Delivered a scalable, maintainable architecture that supports long-term feature growth and parallel development.
+
 ### Why did you choose Clean Architecture over other patterns like MVI or MVP?
 - Be ready to discuss testability, separation of concerns, and scalability for large teams.
 Tip: Tie it back to modularization and code ownership.
@@ -50,6 +155,8 @@ Tip: Tie it back to modularization and code ownership.
   - Use @Singleton / @InstallIn(SingletonComponent::class) for app-level singletons (network, DB, analytics).
   - Use @ActivityRetainedScoped, @ActivityScoped, @FragmentScoped, @ViewModelScoped for lifecycle-bound objects (UI controllers, per-flow caches, viewmodel-scoped helpers).
   - Prefer @InstallIn matching the lifecycle where the dependency is used to avoid leaking longer-lived objects into short-lived scopes.
+  - Each module needs to use @Binds for core DI interfaces to bind implementations in feature modules.
+  - If DI is specific to that module, we create a new DI @Module for those @Provides
 - component hierarchies = TODO?
   - Hilt maps lifecycles: SingletonComponent → ActivityRetainedComponent → ActivityComponent → FragmentComponent / ViewModelComponent. Install modules into the component matching intended lifetime.
   - Put shared abstractions (interfaces, DTOs) in core module. Implementations live in feature modules and are bound to the interfaces via DI modules installed in the appropriate component.
@@ -102,8 +209,53 @@ class FeatureViewModel @Inject constructor(
   Action: migrated incrementally — kept temporary per-feature Activities, used ComposeView/AndroidView interop, shared ViewModels and feature flags to isolate rollout. Opted for small, focused PRs and CI checks to avoid big-bang changes.
   Impact: allowed teams to ship UI changes safely while progressively converting screens to Compose with minimal regressions.
 - Challenge: isolating core components and avoiding circular module dependencies.
-  Action: inventory of shared code, moved only interfaces/DTOs/utilities into a core module, implemented features in feature modules and bound implementations via Hilt modules (or entry points when needed). Enforced Gradle dependency direction and used DI (Provider/Lazy) to break runtime cycles. For navigation, defined a Navigator interface in core implemented by the app module; features expose routes or deep links to avoid direct feature-to-feature deps.
+  Action: inventory of shared code, moved only interfaces/DTOs/utilities into a core module, 
+  - implemented features in feature modules and bound implementations via Hilt modules (or entry points when needed). Enforced Gradle dependency direction and used DI (Provider/Lazy) to break runtime cycles. 
+  - For navigation, defined a Navigator interface in core implemented by the app module; features expose routes or deep links to avoid direct feature-to-feature deps.
+    - core:navigation is the best practice for navigation contracts
+      - App will implement Navigator interface to navigate between features
+        - 
+    - A deep link is a URL or URI that opens your app directly to a specific screen, often with parameters.
+      - Opening from push notifications, emails, or web links.
+        Routing users from marketing campaigns to a specific screen.
+        Supporting web-to-app handoff and app-to-app navigation.
   Impact: reduced coupling, improved build times and testability, and made ownership and boundaries explicit.
+
+```kotlin
+// core:navigation
+interface CheckoutNavigator {
+    fun openCheckoutFromBag()
+    fun openOrderSummary(orderId: String)
+}
+
+interface AuthNavigator {
+    fun openLogin(returnTo: ReturnDestination? = null)
+    fun openAccountCreation()
+}
+
+sealed interface ReturnDestination {
+    data class ProductDetails(val productId: String) : ReturnDestination
+    object Home : ReturnDestination
+}
+
+// TODO: where is the DI module implemented?
+// app module?
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class NavigatorModule {
+
+    @Binds
+    abstract fun bindCheckoutNavigator(
+        impl: CheckoutNavigatorImpl
+    ): CheckoutNavigator
+
+    @Binds
+    abstract fun bindAuthNavigator(
+        impl: AuthNavigatorImpl
+    ): AuthNavigator
+}
+```
+
 
 ### How do you ensure your architecture supports offline-first or low-connectivity scenarios?
 1. Core approach
@@ -120,7 +272,83 @@ class FeatureViewModel @Inject constructor(
    - Observability: metrics and logging for sync success/failure.
    - Testing: unit + integration tests that simulate offline/online transitions.
 
+
+### AR-based Virtual Try-On
+“AR-based virtual try-on essentially combines ARCore’s SDK motion tracking, environmental understanding, and depth data with real-time 3D rendering. The pipeline is straightforward: you create anchors, attach 3D assets, use the depth mesh for occlusion accuracy, and render through Sceneform or a custom GL pipeline. The key challenges are model optimization, frame-rate stability, and smoothing the tracking data
+
+“The Depth API gives you a real-time depth map from the camera. That allows you to understand how far every pixel in the scene is from the device. With that information, you can do proper occlusion—so if a user walks in front of a virtual object, the virtual object disappears behind them instead of just floating on top. It’s essential for realistic virtual try-on.”
+1. Generates per-pixel depth data
+2. Enables occlusion and realistic layering
+3. Helps scale 3D objects naturally based on distance
+
+“Sceneform is the higher-level 3D rendering engine for ARCore. It abstracts away most of the complexity of OpenGL and Filament, so you can load 3D models, apply materials, handle lighting, and attach objects to anchors without manually managing the render pipeline.
+It supports physically-based rendering (PBR), animation playback, and real-time lighting updates, which makes it ideal for virtual try-on because the 3D asset looks realistic and reacts to ARCore’s light estimation. Sceneform basically handles the heavy lifting—render loops, shaders, model loading—so developers can focus on the AR logic itself instead of low-level graphics code.”
+
+“The Face Mesh API gives you a dense mesh of 468 landmark points across the face. These points include eyes, eyebrows, nose bridge, chin, and cheek contours. Virtual try-on uses these landmarks to anchor items like glasses or makeup textures so they stick naturally to the user’s face—even as they rotate, tilt, or move.” NOTE:
+1. Works without needing a depth sensor.
+2. Supports deformation → so models can conform to facial structure.
+3. Stable tracking even in lower lighting.
+
+“Anchors are ARCore’s way of locking a virtual object into a stable position in the real world. Trackables like planes, faces, or feature points define where anchors can be placed. Once an anchor is created, ARCore keeps it updated as the camera moves, so the object doesn’t drift or slide.”
+1. Anchors update pose every frame
+2. Virtual objects are always attached to an anchor
+3. Prevents jitter and drift in 3D placement
+
+“16ms Frame Budget — Hitting 60 FPS. AR is extremely performance-sensitive. You basically have a 16 millisecond budget per frame to maintain a smooth 60 FPS experience. That includes camera capture, depth calculations, mesh tracking, and rendering. Any part of the pipeline that goes over budget causes jitter or drift in the AR object.”
+1. ARCore uses asynchronous updates to help stay within budget
+2. 60 FPS is ideal for stable tracking, especially with face meshes
+
+“Light Estimation lets ARCore analyze the brightness, color temperature, and direction of light in the environment. With that data, you can light your 3D models so they match the real world. It makes virtual objects blend naturally instead of looking ‘pasted on.’”
+1. Supports Environmental HDR for realistic reflections
+2. Soft shadows and highlights react to actual room lighting
+
 ---
+
+# Migration XML -> Compose Narratives
+
+Narrative:
+Situation
+- Legacy Android app with XML layouts struggling to keep up with modern UI demands, slow iteration cycles, and inconsistent design fidelity.
+- Goal: modernize the UI layer by migrating to Jetpack Compose to improve development speed, design consistency, and performance.
+- Took technical leadership on the migration from XML to Compose, defining a phased strategy, establishing best practices, and mentoring the team through the transition.
+Task
+- Design the migration approach, create reusable Compose components, and lead the incremental rollout.
+- Establish state management patterns, theming strategies, and interoperability with existing XML screens.
+- Mentor the team on Compose concepts, best practices, and performance optimizations.
+Action
+- Assessment and Planning
+  - Audited existing XML layouts to identify high-impact screens and common patterns.
+  - Prioritized screens for migration based on complexity, user impact, and team readiness.
+  - Created a migration roadmap with milestones and checkpoints.
+- Incremental Migration Strategy
+  - Started with hybrid XML + Compose screens using ComposeView to embed Compose in existing layouts.
+  - Migrated one screen or feature at a time, keeping ViewModels and business logic unchanged.
+  - Used feature flags to safely roll out Compose screens and allow easy rollback if issues arose.
+- Established State Management
+  - Standardized on StateFlow in ViewModels as the single source of truth.
+  - XML screens collected StateFlows with lifecycleScope; Compose screens used collectAsState().
+  - Shared ViewModels across XML and Compose to maintain consistent state.
+- Theming and Design Fidelity
+  - Created a core design system module with Material3 tokens (colors, typography, shapes).
+  - Implemented reusable Compose UI components (Buttons, TextFields, Cards) in the core module.
+  - Used Compose Previews to validate design fidelity against Figma mockups.
+Result
+- Successfully migrated key screens to Jetpack Compose, improving UI development speed by ~30% and reducing design inconsistencies.
+- Enabled faster iteration cycles with Compose Previews and reusable components.
+- Improved app performance by leveraging Compose’s efficient rendering and state management.
+
+
+## why migrate from xml to compose?
+1. plays nicer with Kotlin libraries → tying coroutines to a layout, better integration with modern dev
+2. less boilerplate → common/core components
+    - reusable components
+    - more consistent design system
+3. previews -> see UI changes without running the app
+4. performance → compose only re-renders what changes
+    - coroutines + flows → better state management and is easier to create background tasks
+    - coroutines can suspend (pause) without blocking the main thread
+5. modern models → MVI, not sure it is possible with xml
+   - declarative UI fits better with unidirectional data flow (MVI)
 
 ## 🎨 Jetpack Compose & UI Modernization
 ### What challenges did you face integrating Jetpack Compose into an existing XML codebase?
@@ -243,6 +471,8 @@ fun MyComposeScreen(state: UiState, onChange: (String) -> Unit) {
 ### What were some performance pitfalls you ran into with Compose and how did you address them?
 - common Compose performance pitfalls are:
   - excessive/unnecessary recompositions, 
+    - teach Effect APIs (remember, derivedStateOf, rememberUpdatedState) and @Stable annotations to minimize recompositions.
+    - use profiling tools (Layout Inspector, Compose Profiler) to identify hotspots.
   - unoptimized Lazy lists (missing keys, heavy item scopes, bad Paging 3 usage), 
   - snapshot state misuse — i.e., using mutable containers or non-observable state in a way that prevents fine-grained snapshot tracking or forces full-tree recompositions.
 - Recomposition issues
@@ -334,41 +564,86 @@ fun PagingScreen(pagingFlow: Flow<PagingData<Item>>) {
 ---
 
 ## 🔐 Security & Backend Integration
+OWASP (Open Web Application Security Project) provides guidelines and best practices for securing mobile applications.
+MASVS (Mobile Application Security Verification Standard) - https://owasp.org/www-project-mobile-application-security/
 ### Can you explain your approach to SSL pinning and why it’s important?
 [SSL Pinning](https://www.youtube.com/watch?v=efIPpIYBNTc&pp=ygUTYW5kcm9pZCBzc2wgcGlubmluZw%3D%3D)
-- what is MitM attack prevention?
-  - A MitM (man-in-the-middle) attack intercepts TLS traffic and presents a forged certificate so the client trusts an attacker. 
-  - Pinning prevents this by rejecting TLS chains that don’t match the pinned certificate or public-key hashes even if the system CA would accept them.
+A Man-in-the-Middle (MitM) attack is when an attacker intercepts and potentially alters TLS traffic.
+A malicious actor might:
+  - Present a forged or compromised certificate that the system’s CA store would normally trust. 
+  - Intercept sensitive API traffic (auth tokens, PII, payments). 
+  - Use tools like Burp, mitmproxy, or Frida to inspect/modify requests. 
+  - Reverse-engineer the APK to extract API keys or bypass TLS validation.
+Pinning prevents this by making the app trust only a known server public key (SPKI) or cert hash. Even if a compromised/rogue CA issues a certificate, the app rejects it.
+
+- name obfuscation and ProGuard/R8 minification can help hide pin values in the binary. 
+  - Pins aren't a secret — they’re public keys. What we’re hiding is context (e.g., API hostnames), not the pins themselves.
+  - “obfuscation makes RE more difficult but pins are not secrets.”
+
 - what is certificate pinning lifecycle?
   - SSL pinning prevents MitM attacks by restricting which server certificates or public keys the app accepts. 
   - Implement pinning using SPKI/public-key hashes, include a pin lifecycle (staging, active, rotation, expiry monitoring), and design safe fallback/rollout and observability.
-- Certificate pinning lifecycle (practical steps)
-  1. Generate pins from the server’s public key (use SPKI SHA-256 hashes, not full certs).
-  2. Ship at least two pins: the current key and a backup key (for rotation).
-  3. Stage pins in a non-blocking environment (staging builds) and monitor errors.
-  4. Enforce pinning in production once validated.
-  5. Rotate keys regularly: publish new backup key, update servers, then switch primary pin in an app update.
-  6. Monitor pin expiration and telemetry; maintain a documented rotation plan and recovery process.
-  7. Fallback and operational handling
-  8. Use backup pins (one active, one future/backup) so certificate re-issuance doesn’t break clients.
-  9. Prefer fail-closed (reject on mismatch) for security, but use staged rollout and feature flags to avoid widespread outages.
-  10. Provide an emergency rollback path (remote config that can relax enforcement) only with strict audit and access controls.
-  11. Log and report pin failures (telemetry + alerts) to detect issues early.
-  12. Avoid pinning entire certs; pin public keys (SPKI) to allow reissues by same CA/key pair.
+
+- Certificate pinning lifecycle (practical steps) -> emphasize operational safety: pinning outages can brick apps if mishandled.
+  1. Generate SPKI SHA-256 hashes (not full certs — correct). 
+  2. Ship at least two pins: current + backup for rotation. 
+    - so cert re-issuance doesn’t break clients.
+    - stage pins in a non-blocking environment (staging builds) and monitor errors.
+  3. Staged rollout:
+    - Soft-fail in debug/staging (log but don't block). 
+    - Validate telemetry before enabling hard-fail.
+  4. Production enforcement (fail-closed). 
+  5. Key rotation strategy:
+    - maintain a documented rotation plan and recovery process.
+    - Update server with new key. 
+    - Promote backup → primary. 
+    - Add a new backup into next client release.
+  6. Expiration monitoring:
+    - Alerts for expiry, unexpected pin mismatches, or failure spikes.
+  7. Operational fallback (emergency rollback):
+    - Controlled “break-glass” remote config to temporarily relax enforcement.
+    - Only with strict audit and access controls -> because this is a security risk.
+  8. Telemetry:
+    - Catch SSLPeerUnverifiedException and report hostname + pin mismatch.
+  9. Avoid full-cert pinning so cert re-issuance doesn't break clients.
+    - pin public keys (SPKI) to allow reissues by same CA/key pair.
+
+
 - Use OkHttp CertificatePinner or TrustManager approach. 
   - Pin SPKI SHA-256, keep multiple pins, and integrate telemetry on SSLPeerUnverifiedException. 
   - Prefer certificates issued by a well‑managed CA and automate rotation tests. 
   - Consider libraries like TrustKit for policy management but evaluate maintenance overhead.
+    - TrustKit for Android is largely outdated; mention it carefully:
+      - TrustKit is less maintained on Android now; I would rely on OkHttp’s built-in pinning unless I need a custom TrustManager.
+    - Used when:
+      - Multiple hosts share pins dynamically 
+      - You need analytics/telemetry before failure 
+      - You need more complex validation (e.g., cert transparency)
+
+Pinning is NOT always appropriate:
+- Apps talking to multiple third-party APIs (Stripe, Firebase, Maps) → don’t pin.
+- Apps that rely on certificate rotation via CDN (Akamai/Cloudflare) → pinning can break traffic.
+- Apps needing zero-downtime key rotation or non-updatable IoT clients → special consideration required.
+
+- Some teams use Certificate Transparency logging to detect rogue certificates without pinning.
+  - It’s not a replacement, but mentioning it shows you understand tradeoffs.
+
 ```kotlin
 // network package
 // Example: OkHttp CertificatePinner with primary and backup SPKI pins
-val pinner = CertificatePinner.Builder()
-    .add("api.example.com", "sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=") // primary
-    .add("api.example.com", "sha256/BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=") // backup
+val certificatePinner = CertificatePinner.Builder()
+    .add(
+        "api.example.com",
+        "sha256/AbCdEfGh..."
+    )
+    .add(
+        "api.example.com",
+        "sha256/NewBackupKey..."
+    )
     .build()
 
 val client = OkHttpClient.Builder()
-    .certificatePinner(pinner)
+    .certificatePinner(certificatePinner)
     .addInterceptor { chain ->
         try {
             chain.proceed(chain.request())
@@ -382,6 +657,9 @@ val client = OkHttpClient.Builder()
 ```
 
 ### How did you implement token-based authentication, and how do you handle token refresh securely?
+- what is OKTA?
+  - Open standard for access delegation commonly used for token-based authentication and authorization.
+  - Involves obtaining access tokens (short-lived) and refresh tokens (long-lived) to access protected resources.
 - implement OAuth2 (Authorization Code with PKCE) issuing short‑lived JWT access tokens and long‑lived refresh tokens; 
   - store refresh tokens encrypted (Keystore + EncryptedSharedPreferences), 
   - keep access token in memory, refresh on 401 with rotation and telemetry
@@ -394,6 +672,10 @@ val client = OkHttpClient.Builder()
 - What is secure storage - Store refresh tokens encrypted: use EncryptedSharedPreferences (Jetpack Security) backed by Android Keystore (MasterKey).
   - Keep access token in memory (ViewModel/Repository). Persisted access tokens increase exposure.
   - Protect remote config or emergency unlocks with strict ACL and audit.
+- SQLCipher or other DB encryption can be used for more complex data storage needs for Room/SQLite.
+  - this is for caching more than just tokens 
+  - use for PII or sensitive user data
+
 - [Credential Manager](https://www.youtube.com/watch?v=FULNucVxf94&pp=ygUVcGhpbGlwcCBsYWNrbmVyIG9hdXRo)
 - [Security Practices](https://www.youtube.com/watch?v=VQvfvXD3ec4)
 - [JWT Auth w/ Ktor - Long](https://www.youtube.com/watch?v=uezSuUQt6DY&pp=ygUVcGhpbGlwcCBsYWNrbmVyIG9hdXRo)
@@ -474,17 +756,75 @@ val client = OkHttpClient.Builder()
 ### Can you give an example of a performance bottleneck you found and how you fixed it?
 - e.g., slow image loading, excessive main thread work, or inefficient layouts.
 - Start:
+  - Neiman Marcus was a web-based e-commerce app that was not optimized for mobile performance. 
   - Slow product-list screen: long time-to-interactive and jank on first scroll. 
-  - Profiling (Android Profiler + Systrace + Macrobenchmark) showed large image decode on the main thread, many cache misses, and synchronous initialization in Application.onCreate() blocking startup.
+  - JANK = UI isn’t rendering smoothly (typically below 60fps or 120fps depending on the device)
+    - Coil helps reduce image decode time and main-thread work 
+    - placeholders/skeletons improve perceived performance 
+    - Paging 3 + prefetch reduces initial bind work and speeds up scrolls.
+  - Profiling using Android Studio Profiler, Systrace, and Macrobenchmark revealed that several screens were decoding overly large images on the main thread. This caused long GC pauses, cache misses, and repeated downscaling work.
+    - We also observed:
+      - Jank on older Android models and tablets during scroll and screen transitions
+      - High image cache churn due to images being much larger than the device needed
+      - Occasional OOM crashes on older Samsung devices
+      - Slow startup due to Glide initialization running on the main thread
+
 - Fix:
+  - We collaborated with backend to introduce additional image breakpoints (e.g., 600 px and 1600 px). This reduced the amount of client-side downscaling, lowered memory usage, and increased cache hit rates.
+    - Add different size variants on server, request smallest needed size per device/viewport. Then downsample images on server/CDN to reduce bytes.
+      - was 900, 1200, and 1920px, we added 300px, 600px, and 1600 variants for mobile/high-density tablets.
+      - used WebP format for better compression and quality.
   - Resize images to view size and enable disk/memory caching (Coil).
+    - by specifying size in ImageRequest and using CachePolicy to prefer cached results -> reduced decode time and main-thread work.
   - Move heavy initialization off the main thread and lazy-initialize services.
     - use a coroutine or WorkManager to defer non-critical init.
   - Use Paging / prefetch and stable keys for lists to avoid rebinds.
-  - Measure with Macrobenchmark (deterministic) and Firebase Performance (RUM) to validate ~25% improvement.
+    - reduced initial bind work and improved scroll performance.
+  - After adding new size breakpoints and migrating to Coil, we measured ~30% faster image load times on average, especially on mid-range Android devices.
+    - Measure with Macrobenchmark (deterministic) and Firebase Performance (RUM) to validate ~25% improvement.
+  - also saw reduced jank during scroll, lower memory usage, and fewer OOM crashes on older devices. 10% fewer janky frames on older devices during scroll.
+  - also Crash-free sessions on older devices improved from 94% → 99%, largely due to fewer OOMs and fewer large in-memory Bitmaps.
+    - improvements came from coil (Coroutines, Better memory management, Bitmap pooling, Smarter downsampling, More predictable caching than Glide)
+    - OOM fixes are due to better bitmap management and downsampling.
+
+```kotlin
+// ImageViewModel.kt
+class ProductViewModel(
+    application: Application,
+    private val imageLoader: ImageLoader,
+    private val repository: ProductRepository,
+    private val displayMetricsProvider: () -> DisplayMetrics
+) : AndroidViewModel(application) {
+
+    // expose an immutable Int, not mutableState from VM
+    private val _imageWidthPx = MutableStateFlow(calculateImageWidthPx(40))
+    val imageWidthPx: StateFlow<Int> = _imageWidthPx
+
+    private fun calculateImageWidthPx(percentWidth: Int): Int {
+        val metrics = displayMetricsProvider()
+        // widthPixels is already in px and respects current orientation
+        val screenWidthPx = metrics.widthPixels
+        return (screenWidthPx * (percentWidth / 100.0)).toInt()
+    }
+
+    // If repository needs the width, pass the current Int
+    val products: Flow<PagingData<Product>> =
+        repository.getProducts(imageWidthPx.value)
+            .cachedIn(viewModelScope)
+
+    fun loadProductImage(url: String, targetPx: Int): ImageRequest {
+        return ImageRequest.Builder(getApplication())
+            .data(url)
+            .size(targetPx, targetPx) // or width x height
+            .allowHardware(true)
+            .build()
+    }
+}
+```
 
 - How Coil helps:
   - Configure a shared ImageLoader with an OkHttp disk cache and use image requests that specify size, enable hardware bitmaps, and prefer cached results to avoid main-thread decode.
+  - NOTE: this happens at the UI layer, not in the ViewModel. ViewModel just provides the size to request.
 ```kotlin
 // ProductImageLoader.kt 
 object ProductImageLoader {
@@ -547,15 +887,10 @@ fun buildProductImageRequest(context: Context, url: String, targetPx: Int) =
 - failed builds:
   - notify team via Slack/email, auto-retry flaky jobs, require fixes before merging PRs, and maintain a healthy main branch with green builds.
 
-### How do you manage environment variables with Gitlab (differences to Github Actions) and signing configs securely in CI/CD pipelines?
+### How do you manage environment variables with Github and signing configs securely in CI/CD pipelines?
 - Use GitLab CI/CD variables (project/group/env scopes) for secrets; mark them protected and masked. Use the File variable type for binaries (keystore) so CI gets a temp path.
 - GitHub Secrets is a secret store for GitHub Actions 
-  - Differences: 
-    - GitHub has repo/org/environment secrets and more restrictive usage on PRs from forks; 
-    - GitLab has project/group variables, File type, and runner-level integrations.
 - Prefer short‑lived credentials (OIDC) or a dedicated secret manager (HashiCorp Vault, AWS Secrets Manager, GCP Secret Manager, Azure Key Vault) over static long‑lived secrets.
-- **Signing**: don’t commit keystore. Store keystore as a File variable or base64 string and inject it during the job; store passwords as masked variables.
-- **Encrypted files**: repo‑committed ciphertext (e.g., keystore.jks.enc) that CI decrypts using a secret passphrase stored in CI variables — useful if you must keep an encrypted blob in git, but less ideal than a secret manager.
 - **Best practices**: least privilege, rotate, audit, protected branches/environments, avoid logging secrets, use File variables for binaries, use OIDC for cloud creds, prefer secret manager integrations.
 
 ---
