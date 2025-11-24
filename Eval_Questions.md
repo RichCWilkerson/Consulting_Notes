@@ -761,16 +761,22 @@ Coroutine
         - is not completed in sequence, can run multiple tasks at the same time (concurrently)
           - e.g., loading data from multiple network sources simultaneously
       - Join and Mutex
-        - these are ways to combine coroutines together
+        - these are ways to combine coroutines together 
         - Join - wait for a coroutine to finish before proceeding
         - Mutex - mutual exclusion, lock 2 (or more) jobs to complete their task before proceeding
 
 ---
 
 ## Storage options in Android (SharedPreferences, DataStore, Room, File Storage)
+- language, dark mode, font size, etc.
+
 - SharedPreferences vs DataStore:
-  - SharedPreferences: key-value pairs, synchronous API, prone to data corruption, not type-safe.
+  - SharedPreferences: key-value pairs, synchronous API, prone to data corruption, not type-safe, does not support coroutines natively.
+    - because it is not asynchronous, it can block the main thread if used improperly -> ANR 
   - DataStore: key-value (Preferences DataStore) or typed objects (Proto DataStore), asynchronous API using coroutines, safer and more robust.
+    - specific to device, not cloud-synced
+    - Protocol (Proto) Buffers -> need to define schema (protocol buffer files, .proto), more setup but type-safe and efficient
+      - let gradle generate code from .proto files, auto generate java/kotlin classes based on schema at compile time
   - Prefer DataStore for new apps due to better performance and safety.
 - Local vs External File Storage:
   - Local (internal) storage: private to the app, not accessible by other apps, good for sensitive data.

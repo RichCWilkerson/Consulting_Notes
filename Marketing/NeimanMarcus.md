@@ -112,33 +112,7 @@ Resolution:
   - Introduced a pre-commit check to prevent re-declaring colors/styles.
   - Setup flow for adding new tokens to core-designsystem. (Talk to UI/UX first, then core module PR, then feature module PRs to consume.)
 
-Failure 3: Build time spikes
-Early modularization actually made things worse, because some modules weren’t isolated and changes cascaded.
-Resolution:
-  - Split core into smaller, more stable modules. 
-  - Introduced API/implementation separation for modules. 
-  - After stabilization, Gradle was able to build only the affected modules → resulting in the 30% improvement.
 
-Failure 4: Team confusion around navigation
-Some devs attempted to navigate directly to other features' screens → broke modular boundaries.
-Resolution:
-  - Introduced FeatureEntry interfaces with typed parameters. 
-  - App shell resolves entries using DI; features never reference each other.
-
-Failure 5: Resistance to change
-Some teammates were anxious about Compose, modularization, and new DI patterns.
-Resolution:
-  - Ran weekly workshops with live coding. 
-  - Pair programmed with resistant teammates. 
-  - Documented patterns, anti-patterns, and template files they could copy.
-
-After 2–3 iterations, team skill and confidence noticeably improved.
-Result
-Build times improved by ~30% because Gradle could rebuild only the modules changed, instead of the entire monolithic app. Modular boundaries reduced interdependencies and enabled better incremental builds.
-Team velocity increased: features were isolated, easier to reason about, and safer to iterate on.
-Testability improved thanks to clear separation of concerns and stable contracts between layers.
-Consistency and reuse increased through shared theming, UI components, and models in the core module.
-Delivered a scalable, maintainable architecture that supports long-term feature growth and parallel development.
 
 ### Why did you choose Clean Architecture over other patterns like MVI or MVP?
 - Be ready to discuss testability, separation of concerns, and scalability for large teams.
@@ -657,12 +631,23 @@ val client = OkHttpClient.Builder()
 ```
 
 ### How did you implement token-based authentication, and how do you handle token refresh securely?
-- what is OKTA?
-  - Open standard for access delegation commonly used for token-based authentication and authorization.
-  - Involves obtaining access tokens (short-lived) and refresh tokens (long-lived) to access protected resources.
-- implement OAuth2 (Authorization Code with PKCE) issuing short‑lived JWT access tokens and long‑lived refresh tokens; 
-  - store refresh tokens encrypted (Keystore + EncryptedSharedPreferences), 
+#### What is OKTA?
+- Okta is an identity provider (IdP) and auth platform that implements standards like OAuth2 and OpenID Connect for token-based authentication and authorization.
+- It issues short-lived access tokens and longer-lived refresh tokens to access protected resources.
+
+#### OAuth2 / PKCE / JWT (JSON Web Tokens)
+- Implement OAuth2 Authorization Code flow with PKCE for the mobile app.
+- The authorization server issues short-lived JWT access tokens and long-lived refresh tokens.
+- store refresh tokens encrypted (Keystore + EncryptedSharedPreferences),
+  - DataStore with encryption is the modern alternative to EncryptedSharedPreferences.
   - keep access token in memory, refresh on 401 with rotation and telemetry
+      - access token is short-lived (e.g., 15 mins) and used for API calls.
+      - 401 is Unauthorized HTTP status code indicating the access token is invalid or expired.
+      - rotation means issuing a new refresh token on each refresh and invalidating the old one.
+      - telemetry means logging refresh success/failure for monitoring.
+  - PKCE prevents auth code interception in native apps. PKCE (Proof Key for Code Exchange)
+    - native apps can’t keep a client secret, so PKCE adds a code challenge/verifier to bind the auth code to the app instance.
+    - native apps (e.g. Android/iOS)
 - What to say about OAuth2 / JWT - OAuth2: use Authorization Code + PKCE for native apps; server returns access and refresh tokens.
   - JWT: access tokens can be JWTs containing claims (sub, exp, scopes); validate signature server-side. Treat JWT as opaque on client; don’t embed secrets.
   - Use short lifetimes for access tokens and rotate refresh tokens server-side.
@@ -675,6 +660,7 @@ val client = OkHttpClient.Builder()
 - SQLCipher or other DB encryption can be used for more complex data storage needs for Room/SQLite.
   - this is for caching more than just tokens 
   - use for PII or sensitive user data
+    - PII = Personally Identifiable Information
 
 - [Credential Manager](https://www.youtube.com/watch?v=FULNucVxf94&pp=ygUVcGhpbGlwcCBsYWNrbmVyIG9hdXRo)
 - [Security Practices](https://www.youtube.com/watch?v=VQvfvXD3ec4)
@@ -697,8 +683,13 @@ val client = OkHttpClient.Builder()
 ### How do you protect sensitive data stored on the device (e.g., tokens, user info)?
 - EncryptedSharedPreferences: (Depricated -> use DataStore with encryption)
   - Jetpack Security wrapper that transparently encrypts preference keys and values using AES-GCM. 
+    - AES-GCM is an authenticated encryption algorithm that provides confidentiality and integrity.
   - It uses a MasterKey derived from a key stored in the Android Keystore so values at rest are encrypted and protected from filesystem access. 
   - Recommended for storing refresh tokens or other persisted secrets that must survive process restarts.
+- DataStore with encryption:
+  - Modern alternative to EncryptedSharedPreferences for key-value or proto storage.
+  - Use Jetpack Security’s MasterKey with DataStore to encrypt data at rest.
+  - Provides type-safe, asynchronous APIs and better performance than SharedPreferences.
 - Android Keystore: 
   - platform API that generates and stores cryptographic keys in a hardware-backed or system-protected area. 
   - Keys are non-exportable, can require user authentication (biometric/device credential) for usage, and are ideal for storing private keys or symmetric keys used for encryption/decryption of sensitive data.
@@ -823,8 +814,33 @@ class ProductViewModel(
 ```
 
 - How Coil helps:
-  - Configure a shared ImageLoader with an OkHttp disk cache and use image requests that specify size, enable hardware bitmaps, and prefer cached results to avoid main-thread decode.
+  - Configure a shared ImageLoader with an OkHttp-backed disk cache, and use image requests that specify size, enable hardware bitmaps, and prefer cached results to minimize main-thread decoding work.
   - NOTE: this happens at the UI layer, not in the ViewModel. ViewModel just provides the size to request.
+
+- Difference between disk cache and memory cache:
+  - Disk cache persists images on device storage and survives app restarts.
+  - Memory cache stores images in RAM for very fast access during the current process lifetime.
+  - Disk cache is slower but can be much larger
+    - memory cache is faster but constrained by available RAM.
+  - OkHttp's network cache stores HTTP responses on disk to avoid re-downloading unchanged images.
+
+- How to decide what to cache in memory vs disk:
+  - Disk cache: cache all downloaded images to avoid re-downloading over network. Size based on expected image set and device storage (e.g., 100MB).
+  - Memory cache: cache frequently used images (e.g., visible items, thumbnails) for fast access. Size based on app memory budget (e.g., 10-15% of available RAM).
+  - Use resized requests and CachePolicy to avoid re-decode and reduce memory usage.
+  - Monitor memory usage and GC behavior to tune memory cache size.
+
+- Does Disk cache work for offline scenarios?
+  - Yes, disk cache allows loading previously viewed images without network access.
+  - However, if the image is not in the disk cache (e.g., first load), it will fail offline.
+  - Consider prefetching important images when online to improve offline experience.
+
+- Drawbacks to caching too many images in memory:
+  - Increased memory usage can lead to OOM crashes, especially on low-end devices.
+  - High memory pressure can trigger more frequent garbage collection, causing jank.
+  - Memory cache is volatile; images are lost on process death, so relying solely on it can lead to more network requests after app restarts.
+  - Balance between memory cache size and disk cache size based on app usage patterns and device capabilities.
+
 ```kotlin
 // ProductImageLoader.kt 
 object ProductImageLoader {
@@ -880,7 +896,7 @@ fun buildProductImageRequest(context: Context, url: String, targetPx: Int) =
 - Network optimizations: HTTP/2 or HTTP/3, connection pooling, keep-alive, and adaptive image delivery (size based on device/viewport).
 - Measure impact: use Macrobenchmark for load times, Firebase Performance for real-user metrics, and Profiler for decode times and cache hit rates.
 
-### Walk me through your CI/CD setup in GitLab. What stages did you automate and how do you handle failed builds?
+### Walk me through your CI/CD setup in Github Actions. What stages did you automate and how do you handle failed builds?
 - CI -> build, test, lint, detekt, with cached Gradle, produce artifacts (APKs, test reports)
 - CD -> staged deploys to internal testing, beta, then production with manual approval, protected branches, and secrets stored in GitLab CI variables. 
   - Failed jobs block later stages, flaky checks marked allow_failure, and production requires manual promotion and successful previous stages.
@@ -892,6 +908,74 @@ fun buildProductImageRequest(context: Context, url: String, targetPx: Int) =
 - GitHub Secrets is a secret store for GitHub Actions 
 - Prefer short‑lived credentials (OIDC) or a dedicated secret manager (HashiCorp Vault, AWS Secrets Manager, GCP Secret Manager, Azure Key Vault) over static long‑lived secrets.
 - **Best practices**: least privilege, rotate, audit, protected branches/environments, avoid logging secrets, use File variables for binaries, use OIDC for cloud creds, prefer secret manager integrations.
+
+
+---
+
+## KMM (Kotlin Multiplatform Mobile)
+### What are the benefits and challenges of using KMM in a mobile app?
+- Benefits:
+  - Code sharing: share business logic, data models, networking, and validation code between Android and iOS, reducing duplication and maintenance overhead.
+  - Consistency: single source of truth for core logic ensures consistent behavior across platforms.
+  - Faster feature delivery: implement features once in shared codebase, speeding up development for both platforms.
+  - Leverage Kotlin: use modern language features, coroutines, and libraries across platforms.
+  - Gradual adoption: integrate KMM into existing native apps incrementally without full rewrite.
+- Challenges:
+  - Platform differences: UI, navigation, and platform-specific APIs still require native implementations.
+  - Tooling maturity: KMM tooling and ecosystem are still evolving; debugging and profiling can be more complex.
+  - Build complexity: managing multiplatform projects adds build configuration overhead.
+  - Team expertise: requires Kotlin knowledge for iOS developers and understanding of native platform conventions for Android developers.
+  - Performance considerations: interop between shared and native code can introduce overhead; careful profiling is needed.
+  - Community and library support: fewer third-party libraries available for KMM compared to native platforms.
+- Use cases:
+  - Shared business logic (validation, calculations)
+  - Networking and data layer
+  - Cross-platform utilities and helpers
+  - Non-UI features (analytics, logging)
+
+
+### How did you handle platform-specific code and dependencies in your KMM project?
+- Use `expect`/`actual` keywords to define platform-specific implementations for shared interfaces or classes.
+  - Define common interfaces in the shared module and provide platform-specific implementations in Android and iOS source sets.
+- Use source sets to organize code: `commonMain`, `androidMain`, `iosMain` for platform-specific code.
+- Manage dependencies using Gradle’s multiplatform support: declare common dependencies in `commonMain` and platform-specific dependencies in `androidMain` and `iosMain`.
+- Leverage Kotlin’s multiplatform libraries (Ktor, SQLDelight, kotlinx.serialization) that support both platforms.
+- Handle platform-specific APIs using `expect`/`actual` or dependency injection to abstract away platform differences.
+- Use Gradle build scripts to configure platform-specific build settings, signing configs, and packaging options.
+- Testing: write common tests in `commonTest` and platform-specific tests in `androidTest` and `iosTest`.
+
+
+---
+
+
+## ARCore (Augmented Reality)
+### Can you explain how you implemented AR features using ARCore in your Android app?
+It's like using snapchat or instagram filters 
+- ARCore is Google’s platform for building augmented reality experiences on Android.
+- Key components:
+  - Motion tracking: uses device sensors and camera to track position and orientation in 3D space.
+  - Environmental understanding: detects horizontal/vertical planes, feature points, and light estimation.
+  - Augmented images: recognizes and tracks 2D images in the environment.
+- Implementation steps:
+  1. Set up ARCore SDK and add dependencies.
+  2. Configure AR session with desired features (plane detection, light estimation).
+  3. Use Camera and rendering APIs to display AR content.
+  4. Handle user interactions (taps, gestures) to place or manipulate virtual objects.
+  5. Optimize performance for smooth AR experiences (frame rate, battery).
+```kotlin
+// Example: Setting up ARCore session with plane detection
+val arFragment = supportFragmentManager.findFragmentById(R.id.ux_fragment) as ArFragment
+arFragment.arSceneView.session?.let { session ->
+    val config = Config(session)
+    config.planeFindingMode = Config.PlaneFindingMode.HORIZONTAL_AND_VERTICAL
+    session.configure(config)
+}
+```
+- Use Sceneform or OpenGL for rendering 3D models and animations.
+- Test on ARCore-supported devices and handle ARCore installation prompts.
+- Consider user experience: provide visual cues for plane detection, feedback on interactions, and handle AR session lifecycle (pause/resume).
+- Refer to ARCore documentation and sample projects for best practices and advanced features.
+
 
 ---
 
@@ -966,7 +1050,7 @@ And finally, I treat standards as an evolving practice — during retros or tech
 ## 🔁 Behavioral / Situational Follow-Ups
 ### Tell me about a technical failure during production and how you handled it.
 - Talk about rollback, monitoring, or postmortem improvements.
-- what would be a good example to use here?
+- TODO: what would be a good example to use here?
 
 ### How do you prioritize technical debt when you’re on tight deadlines?
 - what is technical debt? 
