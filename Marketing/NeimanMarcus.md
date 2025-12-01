@@ -912,7 +912,19 @@ fun buildProductImageRequest(context: Context, url: String, targetPx: Int) =
 
 ---
 
+
 ## KMM (Kotlin Multiplatform Mobile)
+Designed and implemented the shared business logic layer using Kotlin Multiplatform Mobile (KMM), platforms.
+Developed native Android UI components with Jetpack Compose and integrated them with the shared KMM module, ensuring a consistent yet platform-idiomatic experience for enterprise users.
+Optimized the KMM shared module for performance, reducing overhead and ensuring smooth operation on both Android and iOS, vital for a high-performance enterprise-grade application.
+- Minimized expect/actual boundaries and JNI/interop calls in hot paths.
+- Centralized heavy work (parsing, validation, mapping) in shared code using coroutines.
+- Tuned Gradle multiplatform targets and dependency graph to avoid unnecessary source set leaks and keep build times under control.
+Established a robust testing framework for the shared KMM codebase and integrated it into a CI/CD pipeline using Github Actions, ensuring stability, reliability, and seamless deployment across platforms.
+- Normal Kotlin testing frameworks (JUnit, MockK) for shared code.
+- Native XCTest for iOS-specific code.
+- GitHub Actions workflows that build all KMM targets, run the shared test suite on JVM and iOS simulators, and publish the shared artifact for consumption by the Android and iOS apps.
+
 ### What are the benefits and challenges of using KMM in a mobile app?
 - Benefits:
   - Code sharing: share business logic, data models, networking, and validation code between Android and iOS, reducing duplication and maintenance overhead.
@@ -933,6 +945,96 @@ fun buildProductImageRequest(context: Context, url: String, targetPx: Int) =
   - Cross-platform utilities and helpers
   - Non-UI features (analytics, logging)
 
+### Technology stack:
+- Ktor for networking in shared module.
+- SQLDelight for cross-platform database access.
+- Koinx.serialization for JSON parsing.
+- Native UI frameworks: Jetpack Compose for Android, SwiftUI/UIKit for iOS.
+- Kotlin for shared code, Swift/Objective-C for iOS-specific code.
+
+#### Ktor (replacement for Retrofit/OkHttp in KMM)
+- Differences between Retrofit and Ktor:
+  - Retrofit is a type-safe HTTP client for Android/JVM, 
+    - while Ktor is a multiplatform asynchronous framework for building connected applications in Kotlin.
+  - Retrofit is primarily used for REST APIs; 
+    - Ktor can be used for REST, GraphQL, WebSockets, and full HTTP servers/clients.
+  - Retrofit defines APIs via annotations on interfaces; 
+    - Ktor uses a DSL to build requests and configure clients/servers.
+  - Retrofit is typically used in a more request/response, DAO-style setup; 
+    - Ktor is built from the ground up around coroutines and non-blocking I/O.
+  - Retrofit relies on OkHttp under the hood; 
+    - Ktor ships its own multiplatform HTTP client engines (Android, iOS, JVM, JS, Native).
+  - Retrofit plugs into serializers like Gson or Moshi; 
+    - Ktor has first-class support for kotlinx.serialization and pluggable content negotiation.
+- When to use Ktor over Retrofit:
+  - When building a Kotlin Multiplatform Mobile (KMM) project that targets both Android and iOS.
+  - When you need an asynchronous, non-blocking HTTP client that leverages Kotlin coroutines.
+  - When you want a more flexible and customizable HTTP client with a pluggable architecture.
+- Challenges of using Ktor:
+  - Steeper learning curve due to the DSL and plugin-based configuration model.
+  - Smaller ecosystem and fewer ready-made integrations compared to Retrofit on Android.
+  - You often need to wire more things yourself (e.g., standardized error handling, response wrapping) that Retrofit adapters handle for you.
+- Key features:
+  - Asynchronous and non-blocking I/O using Kotlin coroutines.
+  - Support for various HTTP features: requests, responses, headers, cookies, authentication.
+  - Built-in support for JSON serialization/deserialization with kotlinx.serialization.
+  - Pluggable architecture (logging, caching, auth, retries) via client plugins.
+
+
+#### SQLDelight (replacement for Room in KMM)
+SQLDelight is a multiplatform database library that generates type-safe Kotlin APIs from your SQL schema and queries.
+- Differences between Room and SQLDelight:
+  - Room is an Android-only ORM-style layer over SQLite using annotations and DAOs;
+    - SQLDelight is multiplatform and generates Kotlin code directly from .sq files.
+  - Room models entities/relations with annotated data classes;
+    - SQLDelight uses SQL schema and query files as the source of truth for structure and operations.
+  - Both provide compile-time verification of SQL, but:
+    - Room validates queries defined in annotations.
+    - SQLDelight validates the actual SQL in .sq files and generates strongly typed APIs for them.
+- When to use SQLDelight over Room:
+  - Building a Kotlin Multiplatform Mobile (KMM) project targeting Android and iOS.
+  - Wanting direct control over SQL while still getting type safety and codegen.
+  - Needing a lightweight, explicit data layer without a full ORM abstraction.
+- Challenges of using SQLDelight:
+  - Requires writing raw SQL, which may have a steeper learning curve for developers used to ORMs.
+  - Less abstraction compared to Room; developers need to manage migrations and relationships manually.
+  - You take more responsibility for schema design, relationships, and migrations instead of relying on annotations.
+- Key features:
+  - Multiplatform support (Android, iOS, JVM, Native).
+  - Type-safe Kotlin APIs generated from SQL queries.
+  - Compile-time verification of SQL queries.
+  - Support for coroutines and Flow for reactive database access.
+  - Customizable database drivers for different platforms.
+
+
+#### Koin (replacement for Dagger/Hilt in KMM)
+Koin is a lightweight dependency injection framework for Kotlin that works well in multiplatform projects.
+- Differences between Dagger/Hilt and Koin:
+  - Dagger/Hilt is a compile-time, annotation-based DI framework that generates code;
+    - Koin is a runtime, DSL-based DI framework that uses Kotlin code to define modules.
+      - NOTE: runtime is a reason many teams avoid Koin for large Android apps due to startup overhead and reflection.
+        - startup overhead = longer app cold start times due to runtime resolution of dependencies.
+        - reflection = Koin uses reflection to resolve dependencies at runtime, which can impact performance and obfuscation.
+          - TODO: what is reflection? 
+  - Dagger/Hilt relies on annotations and code generation, which can lead to longer build times;
+    - Koin uses a more dynamic approach with a DSL, resulting in faster builds but potentially more runtime overhead.
+  - Dagger/Hilt has a steeper learning curve due to its complexity and annotations;
+    - Koin is generally easier to learn and use due to its straightforward DSL.
+- When to use Koin over Dagger/Hilt:
+  - Building a Kotlin Multiplatform Mobile (KMM) project targeting Android and iOS.
+  - Wanting a simpler, more lightweight DI solution without the complexity of code generation.
+  - Preferring a runtime DI approach with a Kotlin DSL for defining dependencies.
+- Challenges of using Koin:
+  - Potentially higher runtime overhead compared to compile-time DI frameworks.
+  - Less compile-time safety; issues may only surface at runtime.
+  - Smaller ecosystem and fewer integrations compared to Dagger/Hilt.
+- Key features:
+  - Multiplatform support (Android, iOS, JVM, Native).
+  - DSL for defining modules and dependencies.
+    - DSL = Domain-Specific Language
+  - Support for scopes, singletons, and factory definitions.
+  - Integration with coroutines for asynchronous dependency resolution.
+
 
 ### How did you handle platform-specific code and dependencies in your KMM project?
 - Use `expect`/`actual` keywords to define platform-specific implementations for shared interfaces or classes.
@@ -948,20 +1050,27 @@ fun buildProductImageRequest(context: Context, url: String, targetPx: Int) =
 ---
 
 
+------------ The company has decided to scrap this for now --------------
+- it was part of their in store MemoryMirror experience -> 360 video mirror for trying on clothes
 ## ARCore (Augmented Reality)
+Led the development of personalized product discovery, AR-based virtual try-on experiences, and exclusive member-only content, significantly increasing user interaction and sales conversions.
+- member-only is just app-exclusive
+
 ### Can you explain how you implemented AR features using ARCore in your Android app?
 It's like using snapchat or instagram filters 
 - ARCore is Google’s platform for building augmented reality experiences on Android.
 - Key components:
   - Motion tracking: uses device sensors and camera to track position and orientation in 3D space.
+    - requested user permissions: CAMERA, and sometimes LOCATION for geo-AR.
   - Environmental understanding: detects horizontal/vertical planes, feature points, and light estimation.
   - Augmented images: recognizes and tracks 2D images in the environment.
 - Implementation steps:
   1. Set up ARCore SDK and add dependencies.
-  2. Configure AR session with desired features (plane detection, light estimation).
-  3. Use Camera and rendering APIs to display AR content.
-  4. Handle user interactions (taps, gestures) to place or manipulate virtual objects.
-  5. Optimize performance for smooth AR experiences (frame rate, battery).
+  2. Get camera permissions and check for ARCore support on the device. 
+  3. Configure AR session with desired features (plane detection, light estimation). 
+  4. Use Camera and rendering APIs to display AR content. 
+  5. Handle user interactions (taps, gestures) to place or manipulate virtual objects. 
+  6. Optimize performance for smooth AR experiences (frame rate, battery).
 ```kotlin
 // Example: Setting up ARCore session with plane detection
 val arFragment = supportFragmentManager.findFragmentById(R.id.ux_fragment) as ArFragment
@@ -1011,6 +1120,7 @@ We both presented our findings transparently to the PM and leadership team — p
 That approach allowed us to validate the technology objectively and maintain alignment across teams. What I took away from that experience was that technical disagreements are best resolved not by “winning,” but by grounding decisions in data and shared business goals, so everyone feels confident in the outcome.”**
 
 #### “What was the result of that POC?”
+POC = Proof of Concept
 “The POC gave us some valuable clarity. We implemented a small shared module in KMM — specifically, a network utility layer and some data models — to compare build times, app size, and performance against our existing native implementations.
 What we found was that while KMM worked well on Android, the iOS build size increased noticeably, and integration with our Swift-based analytics framework introduced some friction. The shared code benefits were promising, but the tooling and build process still felt immature for production at our scale.
 Based on that, we decided to pause full adoption and revisit KMM once the tooling matured. However, the POC itself wasn’t wasted — it helped us identify areas where we could improve parity between Android and iOS without full KMM adoption, like standardizing API models and documentation.

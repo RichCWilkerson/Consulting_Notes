@@ -33,13 +33,101 @@ onAttach -> onCreate -> onCreateView -> onViewCreated -> onStart -> onResume -> 
 - View Binding:
   - Generates a binding class for each XML layout. Type-safe access to views: `binding.textView`.
   - Simple, safer replacement for `findViewById`.
-  - No XML-to-code expressions; lighter weight.
+  - No XML-to-code expressions (no @{} syntax).
+  - no automatic updates when data changes
+  - UI logic stays in code (Activity/Fragment/ViewModel).
 - Data Binding:
-  - Supports binding expressions in XML, two-way binding, and `@BindingAdapter`s.
-  - Useful when you want to bind UI directly to observable data or use simple expressions in layout.
-  - Slightly more setup and build-time cost.
-- When to pick which: prefer View Binding by default for clarity and speed; use Data Binding when you need expression-binding, two-way binding, or want to push UI logic into XML (careful with testability).
+  - XML expressions: @{viewModel.title}, @{user.name}, simple logic in XML.
+  - Two‑way binding: @={viewModel.input} to sync text fields with ViewModel.
+  - Custom @BindingAdapters to move repeated view logic into reusable adapters.
+  - Can observe LiveData/StateFlow via lifecycleOwner so UI auto‑updates when data changes.
+  - Trade-offs:
+    - More Gradle setup, slightly slower builds.
+    - Logic can drift into XML, which can hurt testability and readability if overused.
+    - More magic (harder for juniors to debug).
+- When to pick which: 
+  - prefer View Binding by default for clarity and speed 
+  - use Data Binding when you need expression-binding, two-way binding, or want to push UI logic into XML (careful with testability).
 - Talking points: testability, build performance, maintainability.
+
+```kotlin
+// View Binding example
+class MyActivity : AppCompatActivity() {
+    private lateinit var binding: ActivityMyBinding
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = ActivityMyBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        binding.myButton.setOnClickListener {
+            binding.myTextView.text = "Button clicked!"
+        }
+    }
+}
+```
+```xml
+<!-- View Binding XML example -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/myTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Hello, World!" />
+
+    <Button
+        android:id="@+id/myButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Click Me" />
+</LinearLayout>
+```
+
+```kotlin
+// Data Binding example
+class MyActivity : AppCompatActivity() {
+    private lateinit var binding: ActivityMyBinding
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = DataBindingUtil.setContentView(this, R.layout.activity_my)
+
+        val viewModel = MyViewModel()
+        binding.viewModel = viewModel
+        binding.lifecycleOwner = this // for LiveData to auto-update UI
+    }
+}
+```
+```xml
+<!-- Data Binding XML example -->
+<layout xmlns:android="http://schemas.android.com/apk/res/android">
+    <data>
+        <variable
+            name="viewModel"
+            type="com.example.MyViewModel" />
+    </data>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@{viewModel.title}" />
+
+        <EditText
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@={viewModel.input}" />
+
+    </LinearLayout>
+</layout>
+```
 
 ---
 
@@ -257,7 +345,7 @@ class CounterViewModel : ViewModel() {
 ### Local
 - icons, Strings, drawables/images, 
 - heavy lists, algorithms, 
-- nested views, nested navigations, 
+- nested views, nested navigation's, 
 - animations
 - retaining static references
 
@@ -498,13 +586,15 @@ fun prefetch(): Deferred<Unit> = viewModelScope.async {
     repo.primeCaches()
 }
 // THIS IS UNSAFE
+// because the caller may forget to call await() and not handle errors properly
+// should not expose Deferred 
 suspend fun fetchData(): List<Person> = viewModelScope.async {
     api.getPeople()
 }.await()
 // use this instead ->  withContext does not use launch under the hood. 
 // It does not create a new child coroutine; it suspends the current one, switches dispatcher, runs the block, then resumes with the result. 
 // It reuses the existing Job (same cancellation & structured concurrency). launch creates a new coroutine with its own Job and returns immediately.
-suspend fun fetchData(): People = withContext(Dispatchers.IO) {
+suspend fun fetchData(): List<Person> = withContext(Dispatchers.IO) {
     api.getPeople()
 }
 // view model
@@ -815,13 +905,6 @@ Coroutine
 
 ---
 
-## How do you handle background tasks in Android
-- if the app is in the foreground and the task is short-lived (a few seconds), use coroutines with lifecycleScope or viewModelScope
-- for longer tasks or tasks that need to run when the app is in the background, use WorkManager
-- for periodic tasks, use WorkManager with periodic work requests 
-
----
-
 ## Difference between mutableStateOf and derivedStateOf in Compose
 - `mutableStateOf`: creates a mutable state holder that triggers recomposition when its value changes.
   - use when you have a single piece of state that can change independently
@@ -980,39 +1063,58 @@ Tips for answering in interviews
 --- 
 
 # Kal Questions
-Describe last project
-App Description
-Team
-Tech contribution
-Role and responsibilities as a lead
-Explain MVVM architecture
-MVVM vs MVP
-Explain Clean code architecture
-Clean code architecture
-MVP VS MVVM VS MVI
-Normal class vs  data class
-lateint vs lazy
-What are sealed classes?
-Stateflow vs Livedata
-Supervisor job vs job
-Stateflow vs shared flow
-Performance monitoring tools used to optimise apps
-Experience using Workmanager and use case
-Why to use dependency injection..libraries
-What are coroutines? Difference types of scopes in coroutines
-What are Dispatchers in coroutines and types
-
-Compose:
-Why compose
-What is launched effect compose
-What is dispose effect
-When does recomposition occur
-Ways to avoid recomposition
-What is state hoisting
-Types of side effects
-What is CompositionLocal
 
 # Kal
+
+## SupervisorJob vs Job
+- `Job`: a handle to a coroutine. If a child coroutine fails, it cancels the entire parent job and all its children.
+- `SupervisorJob`: a special type of job where child coroutines can fail independently without cancelling the parent or other children.
+
+## lateinit vs lazy
+- `lateinit`: used for non-nullable var properties that will be initialized later (before use). Must be mutable (var) and cannot be used with primitive types.
+  - use when you need to initialize a property after object creation (e.g., dependency injection, Android views).
+- `lazy`: used for read-only val properties that are initialized on first access. Must be immutable (val).
+  - use when you want to defer initialization until the property is accessed (e.g., expensive computations, resource loading).
+- When to use:
+  - Use `lateinit` for properties that cannot be initialized in the constructor but will definitely be initialized before use.
+  - Use `lazy` for properties that are expensive to create and may not be needed immediately.
+
+## Role and responsibilities as a lead
+- Technical leadership: guiding architecture decisions, code reviews, setting coding standards.
+- Mentorship: supporting junior developers, fostering growth, knowledge sharing.
+- Project management: coordinating tasks, timelines, ensuring deliverables.
+- Communication: liaising between developers, designers, product managers, and stakeholders.
+- Problem-solving: addressing technical challenges, debugging complex issues.
+
+## MVVM vs MVP
+- MVVM (Model-View-ViewModel):
+  - the View typically observes data (LiveData, StateFlow, etc.) exposed by the ViewModel. There is usually no reference from ViewModel back to View, which reduces coupling
+  - life-cycle aware -> ViewModel survives configuration changes, reducing UI-related bugs
+  - ViewModel exposes state as observable data streams (LiveData, StateFlow) that the View observes and reacts to
+  - promotes unidirectional data flow: View sends user actions to ViewModel, which updates state, and the View reacts to state changes
+  - easier to test due to separation of concerns and lack of direct View references
+- MVP (Model-View-Presenter):
+  - not life-cycle aware -> manual attach/detach (onCreate/onDestroy)
+  - tighter coupling between View and Presenter:
+    - The View holds a reference to its Presenter, and the Presenter often holds a reference back to a concrete View interface.
+    - The Presenter usually calls imperative UI methods like view.showLoading(), view.showError(msg), view.showList(list), etc.
+    - This creates a lot of back-and-forth, interface methods, and lifecycle wiring (attach/detach view on onCreate / onDestroy), making it:
+      - harder to mock/replace views,
+      - more boilerplate,
+      - easier to leak activities/fragments if you forget to detach.
+
+## Class vs Data Class
+- Class: general-purpose blueprint for creating objects, can contain properties, methods, and constructors.
+- Data Class: specialized class for holding data, automatically generates useful methods (equals, hashCode, toString, copy)
+
+## Sealed Classes
+- effectively an abstract class (implicitly) - cannot instantiate directly
+- is not 100% final - can have subclasses, but all subclasses must be defined in the same file
+  - those subclasses can be extended if not final
+- When to use:
+  - Use sealed classes when you have a fixed set of related types and want to enforce exhaustive handling (e.g., in when expressions).
+  - Commonly used for representing states, results, or events in a type-safe manner.
+
 ## LiveData vs StateFlow
 **Lifecycle awareness:**
 - LiveData is lifecycle-aware, automatically managing subscriptions based on activity/fragment lifecycle states. 
@@ -1076,8 +1178,75 @@ sealed class CounterState {
 }
 ```
 
+## R8 vs Proguard
+R8 is the newer code shrinker (reduces APK size) and obfuscator that replaces ProGuard in Android builds
+R8 is faster and more efficient than ProGuard, leading to smaller APK sizes and improved build times.
+R8 integrates better with the Android build system and supports newer language features.
+R8 uses ProGuard rules for configuration, so existing ProGuard configurations can often be reused with R8.
+R8 performs additional optimizations beyond ProGuard, such as inlining and dead code elimination.
+- inlining - replacing method calls with the method body to reduce overhead
+- dead code elimination - removing unused code to reduce size
+
+
+## ListView vs RecyclerView
+ListView is an older Android UI component for displaying scrollable lists of items. 
+RecyclerView is a more advanced and flexible component introduced later.
+RecyclerView uses the ViewHolder pattern to efficiently recycle and reuse item views, improving performance for large lists.
+RecyclerView supports different layout managers (LinearLayoutManager, GridLayoutManager, StaggeredGridLayoutManager) for various list layouts
+- ListView is limited to vertical lists.
+RecyclerView provides built-in support for animations and item decorations, making it easier to customize the appearance and behavior of list items.
+RecyclerView requires more boilerplate code to set up (adapter, view holder, layout manager) 
+- ListView, is simpler. ViewHolder pattern is optional, simpler adapter implementation.
+RecyclerView is the preferred choice for modern Android development due to its flexibility, performance, and extensibility.
+
+```kotlin
+// ListView Example
+val listView: ListView = findViewById(R.id.listView)
+val items = listOf("Item 1", "Item 2", "Item 3")
+val adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, items)
+listView.adapter = adapter
+```
+```xml
+<!-- ListView Layout -->
+<ListView
+    android:id="@+id/listView"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent" />
+```
+```kotlin
+// RecyclerView Example
+class MyAdapter(private val items: List<String>) : RecyclerView.Adapter<MyAdapter.ViewHolder>() {
+    class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        val textView: TextView = itemView.findViewById(android.R.id.text1)
+    }
+    // inflate item layout and create ViewHolder
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+        val view = LayoutInflater.from(parent.context).inflate(android.R.layout.simple_list_item_1, parent, false)
+        return ViewHolder(view)
+    }
+    // bind data to ViewHolder
+    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+        holder.textView.text = items[position]
+    }
+    override fun getItemCount() = items.size
+}
+```
+
+## What is Context in Android
+Context is an abstract class in Android that provides access to application-specific resources and classes, as well as information about the application environment.
+It is used to access resources (strings, images, themes), start activities and services, access system services (e.g., location, connectivity), and manage application-level operations.
+There are different types of Context:
+- Application Context: tied to the lifecycle of the application, used for long-lived operations.
+- Activity Context: tied to the lifecycle of an activity, used for UI-related operations.
+- Service Context: tied to the lifecycle of a service, used for background operations.
+
+
+
+
 ## 
 SharedFlow: Configurable hot flow for shared events and replay.
+- shared events = events that multiple subscribers can listen to simultaneously
+- replay = buffer to replay recent values for new collectors
 StateFlow: State holder and hot flow for UI state with current value.
 Emitters: emit(), tryEmit(), or value for pushing data.
 Collectors: Subscribers receiving ongoing data streams.
@@ -1085,14 +1254,191 @@ Replay Cache: Buffer enabling recent values replay for new collectors.
 
 ---
 
-Why compose
-What is launched effect compose
-What is dispose effect
-When does recomposition occur
-Ways to avoid recomposition
-What is state hoisting
-Types of side effects
-What is CompositionLocal
+## Why Jetpack Compose
+- Declarative UI: Compose allows you to describe your UI in a declarative way, making it easier to understand and maintain.
+- Less Boilerplate: Compose reduces the amount of boilerplate code needed for UI development, leading to faster development cycles.
+- Kotlin Integration: Compose is built with Kotlin, leveraging its features like coroutines, extension functions, and type safety.
+- State Management: Compose has built-in support for state management, making it easier to handle UI state changes.
+- Interoperability: Compose can coexist with existing Views, allowing gradual migration of legacy apps.
+- Modern UI Toolkit: Compose is designed for modern app development, supporting animations, gestures, and theming out of the box.
+- Community and Ecosystem: Growing community support and integration with other Jetpack libraries.
+
+
+## What is CompositionLocal? 
+- is basically a scoped global for Compose: you set a value high in the tree, and any child composable can read it without taking it as a parameter.
+- Useful for theming, localization, or any global state that needs to be accessed by multiple composables.
+
+```kotlin
+// Declares a CompositionLocal with a default value LightTheme.
+// If no provider is found above a composable, it will see LightTheme.
+val LocalTheme = compositionLocalOf { LightTheme }
+@Composable
+fun MyApp() {
+    // Inside this block, LocalTheme.current will return DarkTheme instead of LightTheme.
+    // The "scope" of this value is the subtree inside the provider.
+    CompositionLocalProvider(LocalTheme provides DarkTheme) {
+        // Composables here can access LocalTheme and get DarkTheme
+        MyScreen() // no parameters needed
+    }
+}
+@Composable
+fun MyScreen(){
+    Column {
+        ThemedButton() // this button will use DarkTheme
+        // other composables
+    }
+}
+
+@Composable
+fun ThemedButton() {
+    // val theme = LocalTheme.current reads the current value in the composition.
+    // If ThemedButton is called inside MyApp's provider, it will get DarkTheme;
+    // if called outside, it will get LightTheme.
+    val theme = LocalTheme.current
+    Button(colors = theme.buttonColors) {
+        Text("Themed Button")
+    }
+}
+```
+
+---
+
+## Flow vs Coroutine
+- prefer Coroutine for single asynchronous tasks that return a single result or perform a one-time operation.
+- prefer Flow for handling streams (multiple results) of data that emit multiple values over time, such as real-time updates or collections.
+    - Room database is very useful with Flow because it can emit updates whenever the underlying data changes
+    - network requests that return paginated data or continuous updates
+    - handling user input events like search queries or form inputs that can change over time
+    - combining multiple asynchronous data sources and reacting to changes in any of them
+    - handling sequences of events, such as UI events or sensor data
+
+```kotlin
+sealed class Result<out T> {
+    data object Loading : Result<Nothing>()
+    data class Success<out T>(val data: T) : Result<T>()
+    data class Failure(val exception: Throwable) : Result<Nothing>()
+}
+
+// example of using Ktor HttpClient
+class ProductRepository(
+    private val httpClient: HttpClient
+) {
+    // Using Coroutine to fetch a single product
+    suspend fun fetchAllProducts(): Result<List<Product>> {
+        val response = httpClient.get(
+            urlString = "https://api.example.com/products"
+        )
+        return try {
+            Result.Success(response.body())
+            // only difference for Retrofit is to remove the response above and add these 2 lines
+            // val products = api.getProducts()
+            // Result.Success(products)
+        } catch (e: Exception) {
+            coroutineContext.ensureActive()
+            Result.Failure(e)
+        }
+    }
+
+    // notice the use of emit
+    fun fetchAllProductsFlow(): Flow<Result<List<Product>>> {
+        return flow {
+            emit(Result.Loading)
+
+            val response = httpClient.get(
+                urlString = "https://api.example.com/products"
+            )
+
+            try {
+                emit(Result.Success(response.body()))
+
+            } catch (e: Exception) {
+                coroutineContext.ensureActive()
+                emit(Result.Failure(e))
+            }
+        }
+    }
+}
+
+// ViewModel
+class ProductViewModel(
+    private val productRepository: ProductRepository
+) : ViewModel() {
+    private val _productsState = MutableStateFlow(ProductState())
+    val productsState = _productsState.asStateFlow()
+
+    // Coroutine usage
+    fun loadProductsSuspending() {
+        viewModelScope.launch {
+            _productsState.update { it.copy(isLoading = true) }
+
+            when (val result = productRepository.fetchAllProducts()) {
+                is Result.Failure -> {
+                    _productsState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = result.exception.message
+                        )
+                    }
+                }
+                is Result.Success -> {
+                    _productsState.update {
+                        it.copy(
+                            isLoading = false,
+                            products = result.data
+                        )
+                    }
+                }
+                else -> Unit
+            }
+        }
+    }
+    
+    // Flow usage
+    fun loadProductsFlow() {
+        /*
+        // equivalent to:
+        viewModelScope.launch {
+            productRepository
+                .fetchAllProductsFlow()
+                .collect { result -> ... }
+        }
+        // but use launchIn instead
+         */
+        
+        
+        productRepository
+            .fetchAllProductsFlow()
+            // onEach because we are getting multiple values from our Flow
+            .onEach { result -> 
+                when (result) {
+                    is Result.Failure -> {
+                        _productsState.update {
+                            it.copy(
+                                isLoading = false,
+                                error = result.exception.message
+                            )
+                        }
+                    }
+                    is Result.Loading -> {
+                        _productsState.update {
+                            it.copy(isLoading = true)
+                        }
+                    }
+                    is Result.Success -> {
+                        _productsState.update {
+                            it.copy(
+                                isLoading = false,
+                                products = result.data
+                            )
+                        }
+                    }
+                }
+            }.launchIn(viewModelScope)
+    }
+}
+
+
+```
 
 --- 
 
@@ -1131,9 +1477,3 @@ Bi-Week:
 
 ---
 
-Koin -> runtime -> has more errors at runtime if something is not configured properly
-Hilt -> compile time -> catches more errors at compile time if something is not configured properly
-- this means that most people prefer Hilt over Koin for larger projects where catching errors early is important
-- KMP / KMM -> Koin is preferred since Hilt does not support KMP/KMM yet
-  - need to be more careful with Koin since it is runtime errors
-  - Ktor as well

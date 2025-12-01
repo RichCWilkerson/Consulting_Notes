@@ -1,18 +1,29 @@
+Background:
+- bachelors in Dec 2011
+- born 11/11/1988 -> 37 today
+- graduated high school 2007 
+
+
 # Pitch
 
 Hi, my name is Christian like the religion, and I’m currently a Lead Android Developer at Neiman Marcus with over 13 years of experience in mobile application development across industries like FINANCE, LUXURY RETAIL, AUTOMOTIVE, and TRAVEL.
 
-In my current role I was tasked with modernizing and scaling the app,
-1. I architected and implemented a scalable Android app using Clean Architecture and MVVM, working with the team to identify module boundaries, then breaking the codebase into feature-based Gradle modules -> improving feature release cycles and reducing build times by about 30%.
-3. To modernize the UI, I introduced Jetpack Compose, starting with a hybrid XML + Compose approach before fully migrating new features, which cut UI development time and improved design parity with Figma.
-5. On the backend side, I implemented secure payment and authentication flows using tokenization, SSL pinning, and biometric verification, and
-6. improved app performance by reducing load times by about 25% through lazy loading, image optimization with Coil, and background initialization.
-7. I’ve also set up CI/CD pipelines using Github Actions, ensuring smooth, automated testing and deployments across QA and production.
-8. Along the way, I’ve mentored developers, conducted code reviews, and helped shape best practices across the team.
+At Neiman Marcus, I was brought in to modernize and scale the app. 
+I:
+- Re‑architected the app into Clean Architecture with feature‑based Gradle modules, which sped up builds and made releases more predictable.
+- Led the move to Jetpack Compose, starting with a hybrid XML+Compose approach and then fully composing new features, which cut UI development time and improved design parity with Figma.
+- Improved performance and stability by profiling with Android Studio and Firebase, then introducing lazy loading, Coil for images, and better background initialization.
+- Hardened security with SSL pinning, token-based auth, and biometrics, and set up CI with GitHub Actions for automated testing.
 
-I really enjoy building useful and engaging mobile experiences that solve real user problems.
+Before that, at Ally Bank, I worked on the "One Ally" ecosystem, bringing banking, auto, investing, and mortgage into a single app. 
+There I:
+- Implemented secure login and authentication flows combining biometrics with MFA, ensuring compliance with FDIC, GFCR, and CFPB.
+- Built modular, Kotlin-based features for account management, fund transfers, and bill pay using MVVM, Coroutines, Retrofit, and Room with Jetpack Compose.
+- mobile check deposit
+
+I really enjoy collaborating with other engineers to build useful and engaging mobile experiences that solve real user problems.
 As my current project wraps up, I’m now looking for my next challenge, and I believe [Client/Company Name]
-would be a fantastic place to continue growing my career and contributing to meaningful innovation in mobile development.
+would be a fantastic place to continue growing my career and contribute.
 
 
 
@@ -67,6 +78,24 @@ Detroit, MI
   - Implemented the transfer flow using Retrofit for secure API communication, Coroutines for async processing, and Room for caching transaction data.
 
 
+### Challenge: FDIC Compliance and auditability
+- Security teams and auditors required clear evidence of how login, MFA, biometrics, and encryption were implemented.
+- **Solution:**
+    - Documented the **end-to-end login sequence**, data flows, and storage locations:
+        - Used `Confluence` for written runbooks and implementation notes.
+        - Created sequence diagrams and data-flow diagrams in `draw.io` (diagrams.net) and linked them from tickets and Confluence.
+        - Kept architecture decisions in lightweight `ADR` pages so security and audit could see when/why changes were made.
+            - ADR = Architecture Decision Record
+    - Added structured logging (without PII/secrets) around auth flows so operations and audit teams could trace login attempts and MFA challenges end-to-end:
+        - On Android, logged key auth events (login start/success/failure, MFA challenge/verify, biometric success/fallback) to a centralized pipeline via the existing logging SDK (built on top of `Timber` + backend log aggregation).
+            - Log.d styled logs -> normalized eventType, timestamp, deviceId, appVersion, userId (hashed), eventDetails (non-PII) -> sent to backend logging system (SIEM)
+                - SIEM = Security Information and Event Management
+            - called the logging SDK at auth points (login start, login success, login failure, mfa challenge sent, mfa verified, biometric success, biometric fallback)
+        - Used `Firebase Crashlytics` for crash-level visibility and stability around the login/MFA flows, but routed security/audit events to the bank’s internal log/`SIEM` rather than third‑party analytics.
+            - no 3rd party -> don't send PII or sensitive info to Firebase, only crash stack traces and non-PII metadata
+            - regulatory compliance says we need to keep sensitive logs in-house
+
+
 ## Zoom - Senior Android Developer
 July 2019 - 2021
 
@@ -99,3 +128,29 @@ Some highlights:
 4. Assisted with vehicle data display screens, consuming real-time data provided by the embedded systems team through AIDL-based IPC interfaces.
    - AOSP knowledge helpful here
      - allows you to work with low-level system services and hardware abstraction layers (sensors, audio, display)
+
+
+## How did you use a WorkManager?
+### Neiman Marcus
+“At Neiman Marcus, one of my early responsibilities was stabilizing background operations that were causing slow startups and occasional ANRs. 
+A lot of analytics, personalization, and catalog-sync code ran on the main thread or used custom CoroutineScopes that weren’t lifecycle-aware—so if the app was backgrounded or the process died, the work was lost.
+
+I introduced WorkManager as the unified scheduler for all non-urgent background tasks. For example:
+- Catalog/Inventory delta syncs now run as a PeriodicWorkRequest, ensuring product availability data stays fresh without blocking startup.
+- Personalized recommendation prefetching (used on the Home and PDP screens) runs as constraints-bound work—only on Wi-Fi + charging—to avoid impacting mobile data usage.
+- Analytics batching moved to WorkManager so events are reliably uploaded even if the app is backgrounded or killed.
+
+Migrating these workflows to WorkManager reduced startup time (by deferring non-critical initialization), improved battery efficiency, and significantly reduced dropped analytics events. 
+It also simplified our architecture by consolidating background work into a single, observable pipeline.”
+
+### Ally Bank
+“At Ally, reliability and data consistency were absolutely critical because the app supported banking, auto, investing, and mortgage—all in one ecosystem. We often had data that needed to be synced or uploaded reliably, regardless of whether the user kept the app open.
+
+I used WorkManager for several key flows:
+- Secure message and document sync (e.g., statements, secure messages, notices) were uploaded/downloaded using WorkManager tasks with network + device-idle constraints. 
+- For the Fund Transfer module, I used WorkManager to schedule transaction confirmation + audit logging to ensure every transfer generated a compliant event trail, even with intermittent connectivity.
+  - This is not the transfer itself, which happens immediately (Coroutine), but the logging and confirmation step after.
+- We also used WorkManager to retry failed API calls for low-priority actions—such as dismissing in-app alerts or updating user preferences—using exponential backoff to meet compliance and minimize server load.
+  - TODO: i don't know what this means...
+
+WorkManager’s guaranteed execution was a perfect fit for our regulated context because it allowed us to handle background work reliably while respecting Android Doze mode, network constraints, and encryption requirements.”

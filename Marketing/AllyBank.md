@@ -41,11 +41,13 @@ Overall, the app was solid, but there was a clear focus on refactoring, moderniz
 ## What were my responsibilities?
 1. Secure Login & Authentication:
 Integrated Android Biometric APIs for fingerprint and face authentication, combined with MFA (SMS/Email OTP) and end-to-end encryption.
-2. Account Management:
+2. Snapshot (Account) Management:
 Built modular Kotlin-based features for viewing balances, transaction histories, and account summaries using MVVM and Clean Architecture.
 3. Fund Transfers & Bill Pay:
 Implemented the transfer flow using Retrofit for secure API communication, Coroutines for async processing, and Room for caching transaction data.
-4. UI Modernization:
+4. Mobile Check Deposit:
+Developed the check deposit feature using CameraX for image capture, ML Kit for image processing, and secure upload to backend services (Retrofit + OkHttp with TLS 1.2+ and SSL pinning).
+5. UI Modernization:
 Built some new features with compose, compose was still maturing during this time, but gave our team leverage on knowing its use cases
 
 
@@ -53,12 +55,16 @@ Built some new features with compose, compose was still maturing during this tim
 CFPB: Consumer Financial Protection Bureau
 - Focuses on protecting consumers from unfair or deceptive practices, safeguarding customer data, and ensuring clear disclosure and consent around how their data is used.
 - For Android apps this translates into strong authentication, encryption in transit and at rest, secure handling of PII (Personally Identifiable Info), and clear UX flows for login, consent, and notifications.
+
 FDIC: Federal Deposit Insurance Corporation
 - Focuses on safety and soundness of financial institutions and protecting customer deposits.
 - For Android apps this means following bank policies for access control, auditability, and incident response, and ensuring the app never bypasses server-side risk checks or compliance controls.
+
 GFCR: Global Financial Cybersecurity Regulations
 - Umbrella term for global banking cyber requirements (for example, FFIEC, PSD2, ISO 27001) that emphasize strong authentication, secure communication, and continuous monitoring.
 - For Android apps this means hardened TLS, device integrity checks, secure key management, least-privilege access to APIs, and detailed logging for fraud investigation.
+
+---
 
 1. OAuth2 – “Delegated access”
    - Banks must never expose user credentials directly.
@@ -80,12 +86,18 @@ GFCR: Global Financial Cybersecurity Regulations
    - Strong transport security here means enforcing modern TLS versions and ciphers, disabling cleartext HTTP, validating the full certificate chain, and adding pinning (SPKI or cert) for high-risk endpoints.
      - modern TLS versions and ciphers: TLS 1.2+ with AEAD ciphers (e.g., AES-GCM, ChaCha20-Poly1305)
      - disabling cleartext HTTP: disallowing HTTP connections, enforcing HTTPS only
+   - obfuscation with R8/ProGuard helps protect pinning logic from reverse engineering.
 
 5. Biometric Authentication – “Trusted unlock”
    - Used to secure account access, mobile check deposit, and high-risk actions (transfers, ACH, Zelle, etc).
    - Meets CFPB, FFIEC, and major banking security recommendations for strong, user-friendly authentication.
 
-6. Encrypted SharedPrefs – “Secure storage”
+6. EncryptedSharedPrefs – “Secure storage”
+   - EncryptedSharedPreferences deprecated in 2025 in favor of DataStore with added encryption support.
+     - DataStore came out in 2020 - no built-in encryption. Encrypt with:
+       - Android Keystore 
+       - Tink (Google’s cryptography library)
+       - Custom encryption transformer functions (e.g., Transformations.map or custom Serializer encrypt/decrypt steps)
    - Banks cannot store tokens or sensitive flags in plaintext.
    - Typically allowed to store: opaque access/refresh tokens, device identifiers, feature flags, and encryption nonces—as long as they’re encrypted at rest and server-side controls enforce expiration and revocation.
    - Sensitive flags include booleans or values that change security posture, such as “biometric enabled”, “device trusted”, “debug mode”, or internal kill-switches that guard risky features.
@@ -213,6 +225,7 @@ Outcome: arrived at an MFA flow that met security/audit requirements while keepi
       - Added structured logging (without PII/secrets) around auth flows so operations and audit teams could trace login attempts and MFA challenges end-to-end:
           - On Android, logged key auth events (login start/success/failure, MFA challenge/verify, biometric success/fallback) to a centralized pipeline via the existing logging SDK (built on top of `Timber` + backend log aggregation).
             - Log.d styled logs -> normalized eventType, timestamp, deviceId, appVersion, userId (hashed), eventDetails (non-PII) -> sent to backend logging system (SIEM)
+              - SIEM = Security Information and Event Management
             - called the logging SDK at auth points (login start, login success, login failure, mfa challenge sent, mfa verified, biometric success, biometric fallback)
           - Used `Firebase Crashlytics` for crash-level visibility and stability around the login/MFA flows, but routed security/audit events to the bank’s internal log/`SIEM` rather than third‑party analytics.
             - no 3rd party -> don't send PII or sensitive info to Firebase, only crash stack traces and non-PII metadata
@@ -235,3 +248,45 @@ Built modular Kotlin-based features for viewing balances, transaction histories,
 ## 3. Fund Transfers & Bill Pay:
 Implemented the transfer flow using Retrofit for secure API communication, Coroutines for async processing, and Room for caching transaction data.
 - security with SSL pinning, OAuth2 tokens, JWT session management
+
+
+## 4. Mobile Check Deposit:
+Developed the check deposit feature using CameraX for image capture, ML Kit for image processing,
+and secure upload to backend services (Retrofit + OkHttp with TLS 1.2+ and SSL pinning).
+
+For mobile check deposit, I used CameraX to build a custom camera flow. 
+I configured Preview and ImageCapture use cases, tied them to the lifecycle so the camera handled configuration changes safely, and added a custom overlay to guide users. 
+I also used a frame analyzer to support auto-capture when the check was properly aligned, which improved both usability and image quality.
+
+After capturing the image, I used ML Kit’s vision APIs to validate the check. 
+We analyzed the image to ensure the full check was visible, reasonably aligned, and not too dark or blurry. 
+If quality checks failed, the app provided real-time feedback and asked the user to retake the photo. 
+Doing this on device with ML Kit reduced bad submissions and improved the success rate of deposits.
+
+For mobile check deposit, I combined CameraX and ML Kit: CameraX gave us a stable, lifecycle-aware camera experience with custom overlays and auto-capture, and ML Kit validated the image on device for alignment and quality. 
+Only when the check looked good did we securely upload it via Retrofit/OkHttp with TLS 1.2+ and SSL/SPKI pinning to meet banking security and compliance requirements.
+
+### CameraX Integration
+CameraX is a Jetpack library that makes it easier to build camera features without dealing with low-level Camera2 APIs. It’s lifecycle-aware and works consistently across many devices.
+
+- Used CameraX Preview and ImageCapture use cases to show the live camera feed and capture high-resolution images.
+- Tied CameraX to the Activity/Fragment lifecycle so the camera automatically opened/closed with the UI, reducing crashes and resource leaks.
+- Custom overlay UI: drew on-screen guides (bounding box) so users could line up the check.
+- Implemented an auto-capture behavior:
+  - Continuously analyzed the preview frames (via an analyzer) to decide when the check was well-aligned and in focus.
+  - When conditions were met, triggered ImageCapture.takePicture() automatically instead of forcing the user to tap
+
+- Expose simple state: isAligned, isTooDark, isBlurry, isCapturing, errorMessage, capturedImage.
+
+### ML Kit Integration Image Processing:
+ML Kit is Google’s on-device machine learning SDK. It gives you prebuilt models for vision tasks like text recognition, face detection, and object detection without having to train your own models.
+
+- Fed the captured image (or preview frames) into ML Kit’s vision APIs.
+- Edge detection / framing:
+  - Detected the outline of the check to see if it was fully inside the frame.
+  - If the check was cut off or skewed too much, showed a prompt to re-align.
+- Image quality checks:
+  - Checked basic quality signals like brightness and sharpness.
+  - If lighting was too low or the image was blurry, showed real-time feedback asking the user to retake the photo.
+- By validating locally on device, you reduced failed deposits and back-and-forth with users.
+
