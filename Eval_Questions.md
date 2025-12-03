@@ -1015,6 +1015,8 @@ val secretKey = keyGenerator.generateKey()
 ## Migrate from Java to Kotlin
 [Tutorial](https://www.udacity.com/course/kotlin-for-android-developers--ud888?utm_source=chatgpt.com)
 
+[Refactor](https://www.youtube.com/watch?v=WhlpElaeYHE)
+
 - First moved to gradle 8.13 
   - added kotlin plugin and kotlin stdlib dependency
 
@@ -1438,6 +1440,30 @@ class ProductViewModel(
 }
 
 
+```
+
+--- 
+
+## Ways to Initial Load Data:
+1. LaunchedEffect in Compose UI calls ViewModel to load data on first composition, set key to true
+    - `productViewModel.loadProducts()`
+    - disadvantage -> harder to test because load is called automatically on first composition
+2. Init in the viewmodel
+    - advantage -> recomposition does not trigger multiple loads for the same data
+    - disadvantage -> testing is harder because load is called automatically on init
+3. Couple data to a Flow collection lifecycle
+    - have full control for testing
+```kotlin
+private val _productUiState = MutableStateFlow(false)
+val productUiState = _productUiState
+    // onStart is called when the first subscriber appears -> `val productListUiState by productViewModel.productListUiState.collectAsStateWithLifecycle()`
+    .onStart { loadProducts() }
+    // stateIn to share the flow in viewmodel scope, because viewmodel is tied to lifecycle of the screen
+    // initial value is false
+    // SharingStarted.WhileSubscribed(5000L) means the flow will stay active for 5 seconds after the last subscriber disappears
+    // this means if the user quickly navigates away and back, we don't have to reload the data immediately (configuration change, quick navigation, etc.)
+    // if no subscribers for more than 5 secs, loadProducts() will be called again on next subscription
+    .stateIn(viewModelScope, SharingStarted.WhileSubsribed(5000L) , false)
 ```
 
 --- 

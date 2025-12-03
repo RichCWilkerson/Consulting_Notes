@@ -505,3 +505,6 @@ class ExampleStartupBenchmark {
   - helps maintain optimal performance as the app evolves
   - can help recognize trends in performance over time
 
+
+## Android Studio Profiler 
+[Youtube](https://www.youtube.com/watch?v=CQc-QDTmCoQ)

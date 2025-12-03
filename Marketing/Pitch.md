@@ -10,7 +10,7 @@ Hi, my name is Christian like the religion, and I’m currently a Lead Android D
 
 At Neiman Marcus, I was brought in to modernize and scale the app. 
 I:
-- Re‑architected the app into Clean Architecture with feature‑based Gradle modules, which sped up builds and made releases more predictable.
+- Re‑architected the app into Clean MVVM Architecture with feature‑based Gradle modules, which sped up builds and made releases more predictable.
 - Led the move to Jetpack Compose, starting with a hybrid XML+Compose approach and then fully composing new features, which cut UI development time and improved design parity with Figma.
 - Improved performance and stability by profiling with Android Studio and Firebase, then introducing lazy loading, Coil for images, and better background initialization.
 - Hardened security with SSL pinning, token-based auth, and biometrics, and set up CI with GitHub Actions for automated testing.
@@ -18,13 +18,15 @@ I:
 Before that, at Ally Bank, I worked on the "One Ally" ecosystem, bringing banking, auto, investing, and mortgage into a single app. 
 There I:
 - Implemented secure login and authentication flows combining biometrics with MFA, ensuring compliance with FDIC, GFCR, and CFPB.
-- Built modular, Kotlin-based features for account management, fund transfers, and bill pay using MVVM, Coroutines, Retrofit, and Room with Jetpack Compose.
-- mobile check deposit
+- Built modular, Kotlin-based features for snapshot, fund transfer, and bill pay using MVVM, Coroutines, Retrofit, and Room with Jetpack Compose.
+- Also developed the mobile check deposit feature using CameraX, image processing, and secure upload.
 
 I really enjoy collaborating with other engineers to build useful and engaging mobile experiences that solve real user problems.
 As my current project wraps up, I’m now looking for my next challenge, and I believe [Client/Company Name]
 would be a fantastic place to continue growing my career and contribute.
 
+
+- baseline profiles help with AOT (Ahead of Time) compilation
 
 
 ## Neiman Marcus - Lead Android Developer
@@ -52,6 +54,15 @@ Identified memory leaks & stuck references.
 Showed heap usage, bitmap size, reference chains.
 ✔ Firebase Crashlytics
 Confirmed the crash signature and validated the fix.
+**Firebase Performance Monitoring**
+Identified slow image loading as root cause.
+
+Action:
+- Added Coil for better image loading and caching.
+  - Disk and memory caching strategies.
+  - downsampled images 
+- Optimized image sizes from backend with QA/backend team.
+- Implemented lazy loading for offscreen images.
 
 Key learning from challenge:
 That incident reinforced for me the importance of treating production analytics as part of the development lifecycle, not as an afterthought.
@@ -140,6 +151,9 @@ I introduced WorkManager as the unified scheduler for all non-urgent background 
 - Personalized recommendation prefetching (used on the Home and PDP screens) runs as constraints-bound work—only on Wi-Fi + charging—to avoid impacting mobile data usage.
 - Analytics batching moved to WorkManager so events are reliably uploaded even if the app is backgrounded or killed.
 
+- WorkManager to sync Product Catalog with Room database in the background
+  - only store image urls, not bitmaps
+
 Migrating these workflows to WorkManager reduced startup time (by deferring non-critical initialization), improved battery efficiency, and significantly reduced dropped analytics events. 
 It also simplified our architecture by consolidating background work into a single, observable pipeline.”
 
@@ -154,3 +168,23 @@ I used WorkManager for several key flows:
   - TODO: i don't know what this means...
 
 WorkManager’s guaranteed execution was a perfect fit for our regulated context because it allowed us to handle background work reliably while respecting Android Doze mode, network constraints, and encryption requirements.”
+
+--- 
+
+3 type of mocks with Abhigyan
+- he might decide based on my interviews
+- i might based on what i feel like i need
+- email 
+- let him know 2-3 hours in advance
+
+1. communication skills
+- based on profile -> graded on how i answer -> feedback is based
+- how good are your answers based on the roll applied for?
+- senior does not answer the same as lead, etc.
+
+2. full in mocks
+- simulate real interview (questions anywhere in the interview)
+
+3. project mocks
+- digs deep into the projects on resume
+- what challenges, solutions, learnings

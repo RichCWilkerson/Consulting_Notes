@@ -28,6 +28,22 @@ would be a fantastic place to continue growing my career and contributing to mea
 
 ---
 
+•	Designed and implemented a modular, scalable Android application architecture leveraging MVVM and Clean Architecture, enabling rapid feature iteration and long-term maintainability.
+•	Pioneered the adoption of Jetpack Compose to deliver refined, high-fidelity UI components aligned with Neiman Marcus’s luxury aesthetic, elevating the visual experience and customer engagement.
+•	Led the development of personalized product discovery, AR-based virtual try-on experiences, and exclusive member-only content, significantly increasing user interaction and sales conversions.
+•	Integrated advanced payment gateways and enforced robust security measures—including tokenization, SSL pinning, and biometric authentication—to enable secure, seamless high-value transactions.
+•	Collaborated with global backend teams to integrate real-time inventory, order tracking, and localized content APIs, ensuring a consistent and responsive channel experience across regions.
+•	Performed deep performance profiling and optimization, cutting app load times by 25% and enhancing responsiveness for a smooth, premium shopping journey.
+•	Designed and implemented the shared business logic layer using Kotlin Multiplatform Mobile (KMM), platforms.
+•	Developed native Android UI components with Jetpack Compose and integrated them with the shared KMM module, ensuring a consistent yet platform-idiomatic experience for enterprise users.
+•	Implemented secure API communication for real-time inventory tracking, asset management, and user systems.
+•	Optimized the KMM shared module for performance, reducing overhead and ensuring smooth operation on both Android and iOS, vital for a high-performance enterprise-grade application.
+•	Established a robust testing framework for the shared KMM codebase and integrated it into a CI/CD 	pipeline using Github Actions, ensuring stability, reliability, and seamless deployment across platforms.
+•	Mentored a team of four Android developers, conducting thorough code reviews, promoting clean coding standards, and resolving complex architectural challenges to elevate delivery quality and efficiency.
+•	Implemented CI/CD pipelines via Github Actions, automating build, test, linting, detekt, and deployment and UI testing.
+
+---
+
 # Cross-Examine
 
 ---
