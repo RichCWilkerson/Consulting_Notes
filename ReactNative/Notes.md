@@ -96,8 +96,5 @@ Callback and promises
 // the array reference cannot be changed when using const
 // but can modify the contents of the array
 const numbers = [45, 4, 9, 16, 25];
-
-React doesn't use classes much
-uses functional components with hooks
-
-node js + vscode
+const newNumbers = [...numbers, 36]; // valid
+numbers.push(49); // valid -> prefer above method to avoid mutation

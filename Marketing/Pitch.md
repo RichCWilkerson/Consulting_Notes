@@ -3,6 +3,8 @@ Background:
 - born 11/11/1988 -> 37 today
 - graduated high school 2007 
 
+Current Address:
+750 Fort Worth Avenue • Dallas TX 75208
 
 # Pitch
 
@@ -14,6 +16,7 @@ I:
 - Led the move to Jetpack Compose, starting with a hybrid XML+Compose approach and then fully composing new features, which cut UI development time and improved design parity with Figma.
 - Improved performance and stability by profiling with Android Studio and Firebase, then introducing lazy loading, Coil for images, and better background initialization.
 - Hardened security with SSL pinning, token-based auth, and biometrics, and set up CI with GitHub Actions for automated testing.
+- led and developed a KMM module for sign-up and login as a PoC to evaluate cross-platform code sharing for iOS and Android.
 
 Before that, at Ally Bank, I worked on the "One Ally" ecosystem, bringing banking, auto, investing, and mortgage into a single app. 
 There I:

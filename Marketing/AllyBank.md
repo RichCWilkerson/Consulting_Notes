@@ -41,6 +41,7 @@ Overall, the app was solid, but there was a clear focus on refactoring, moderniz
 ## What were my responsibilities?
 1. Secure Login & Authentication:
 Integrated Android Biometric APIs for fingerprint and face authentication, combined with MFA (SMS/Email OTP) and end-to-end encryption.
+   - MFA is handled by the backend -> user inputs username/password -> backend decides if MFA is needed based on risk signals (new device, high-value transfer, etc) -> if needed, send OTP via SMS/email -> user inputs OTP -> backend verifies and returns access/refresh tokens
 2. Snapshot (Account) Management:
 Built modular Kotlin-based features for viewing balances, transaction histories, and account summaries using MVVM and Clean Architecture.
 3. Fund Transfers & Bill Pay:

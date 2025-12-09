@@ -30,11 +30,15 @@ fetchDataCallback("/api", (err, result) => {
 - Error handling is manual and inconsistent.
 
 ---
+
 ## 2. Promises
 
 A Promise represents a value that will be available **now or in the future**.
+- promises can have return types
+`function fetchDataPromise(url): Promise<User> { ... }`
 
 ```js
+// definition of promise
 function fetchDataPromise(url) {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
@@ -48,6 +52,7 @@ function fetchDataPromise(url) {
   });
 }
 
+// how we consume a promise
 fetchDataPromise("/api")
   .then((result) => {
     console.log("Result:", result);
@@ -64,12 +69,18 @@ fetchDataPromise("/api")
 ## 3. async/await (modern, easiest to read)
 
 `async/await` is syntax sugar on top of Promises and feels like Kotlin coroutines with `suspend`.
+- a way to avoid promise chains and nested callbacks
+- if a second async operation depends on the first, you can `await` it in sequence
 
 ```js
 async function loadData() {
   try {
     const result = await fetchDataPromise("/api");
     console.log("Result:", result);
+    // second async operation depending on first
+    const id = result.id;
+    const details = await fetchDataPromise(`/api/details/${id}`);
+    console.log("Details:", details);
   } catch (error) {
     console.error("Error:", error);
   }
@@ -209,6 +220,17 @@ function demoConst() {
 **Important:** `const` prevents reassignment of the variable, **NOT** mutation of the object/array it points to.
 
 ---
+
+## Event Loop and Async Behavior (for React Native devs)
+https://www.geeksforgeeks.org/javascript/what-is-an-event-loop-in-javascript/
+- defines how JavaScript handles async operations 
+  - promises are in priority queue (microtask queue)
+  - callbacks (setTimeout, setInterval) are in task queue (macrotask queue)
+- event loop checks call stack, if empty, processes microtasks first, then macrotasks
+
+
+
+---
 ## Summary (Android dev mental model)
 
 - Prefer **`const`** by default (like `val`).
@@ -216,3 +238,18 @@ function demoConst() {
 - Avoid **`var`** in new code; it’s mostly for legacy compatibility.
 
 In React / React Native codebases, you’ll see `const` used almost everywhere (components, hooks, config), with `let` reserved for rare mutable values.
+
+---
+
+How does JS thread work with android?
+- JS runs on a single thread (the JS thread) separate from the main UI thread.
+- The JS thread handles all JS execution, including React Native bridge communication.
+- If we need to run any blocking operation, we should offload it to native modules or use async APIs to avoid blocking the JS thread and causing UI jank.
+  - so we could run it on android native coroutines like Dispatchers.IO or Dispatchers.Default
+
+
+- going to make a project now using Expo and React Native CLI to practice these concepts
+  - npm install -g expo-cli
+  - sudo npx create-expo-app SecondApp --template blank
+  - get app running on iOS simulator, Android emulator, physical device, and web
+  - make small changes like Text or Button

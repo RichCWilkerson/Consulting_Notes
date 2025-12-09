@@ -131,6 +131,12 @@ class MyActivity : AppCompatActivity() {
 
 ---
 
+## Unidirectional Data Flow (UDF) 
+state flows in only one direction, typically from a single source of truth (e.g., ViewModel) down to the UI layer.
+events flow in the opposite direction, typically from the UI layer up to the ViewModel or business logic layer.
+
+---
+
 ## Difference between enum and sealed class (Kotlin)
 - enum class:
   - Use for a fixed set of constant values (e.g., DAYS_OF_WEEK).
