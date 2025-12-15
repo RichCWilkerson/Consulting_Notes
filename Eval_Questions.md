@@ -1474,6 +1474,75 @@ val productUiState = _productUiState
 
 --- 
 
+## MockK vs Mockito
+- MockK is designed specifically for Kotlin, while Mockito was originally built for Java.
+- MockK has better support for Kotlin features like coroutines, extension functions, and data classes.
+- MockK has a more concise and expressive syntax for creating mocks and stubs in Kotlin.
+- Mockito has a larger community and more extensive documentation due to its longer presence in the industry.
+
+---
+
+## Advantages of Compose Testing
+- Declarative UI: Compose's declarative nature makes it easier to write tests that focus on UI state and behavior rather than implementation details.
+- Built-in Testing APIs: Compose provides a rich set of testing APIs that allow you to interact with and assert on composables directly.
+- Isolation: Compose tests can be run in isolation without the need for a full Android environment, making them faster and more reliable.
+- State Management: Compose's state management makes it easier to test different UI states by simply changing the state variables.
+- Integration with existing testing frameworks: Compose testing can be integrated with JUnit
+
+---
+
+## How do you handle distribution?
+- 
+
+
+---
+
+## How can your view model collect UI updates from multiple sources?
+- use combine() operator from Kotlin Flow to merge multiple flows into a single flow
+- each source can be a separate flow that emits UI updates
+- the combined flow can then be collected in the view model to update the UI state accordingly
+
+```kotlin
+// Example of combining multiple flows in a ViewModel
+class MyViewModel(
+    private val source1: Flow<UiUpdate>,
+    private val source2: Flow<UiUpdate>
+) : ViewModel() {
+    private val _uiState = MutableStateFlow<UiState>(UiState.Initial)
+    val uiState: StateFlow<UiState> = _uiState.asStateFlow()
+    
+    init {
+        viewModelScope.launch {
+            combine(source1, source2) { update1, update2 ->
+                // Combine the updates from both sources into a single UI state
+                UiState(
+                    dataFromSource1 = update1.data,
+                    dataFromSource2 = update2.data
+                )
+            }.collect { combinedState ->
+                _uiState.value = combinedState
+            }
+        }
+    }
+}
+
+// Compose
+@Composable
+fun MyScreen(viewModel: MyViewModel) {
+    val uiState by viewModel.uiState.collectAsState()
+    // Render UI based on uiState
+}
+```
+
+---
+
+## How do you update multiple states in a view model when updated on Compose side?
+- use multiple MutableStateFlow or LiveData properties in the view model to represent different states
+- in the composable, when a state changes, call a function in the view model to update the corresponding state
+- the view model can then update the appropriate MutableStateFlow or LiveData property, triggering recomposition in the composable
+
+---
+
 asked about how I pioneered compose -> search, -> where else did you do something like that? -> 
 some features never made it to production, but at Ally bank -> ...
 
@@ -1505,7 +1574,39 @@ Bi-Week:
 - friday: retrospective -> substitute for grooming, but lose end of day work if we do both
 - product demo - as needed (typically based on how many features are done) typical 1 time every other month
 
+---
 
+
+
+NEW QUESTIONS HERE
 
 ---
 
+## How do you handle timeouts and network instability in Android applications?
+- exponential backoff strategy for retries
+- jitter to avoid thundering herd problem
+- use libraries like Retrofit with OkHttp that have built-in support for timeouts and retries
+- circuit breaker pattern to prevent overwhelming the server - more on the server/backend, but can be implemented on client side too
+
+---
+
+
+## What is Kotlin SAM Conversions?
+- SAM stands for Single Abstract Method, which refers to interfaces with only one abstract method.
+- Kotlin SAM Conversions allow you to implement such interfaces using lambda expressions, making the code more concise and readable.
+- When to use:
+  - Use SAM conversions when you need to implement a functional interface (an interface with a single abstract method) in Kotlin.
+  - This is particularly useful for Java interfaces like Runnable, Comparator, or any custom functional interfaces.
+  - It simplifies the syntax and improves code clarity when passing behavior as parameters.
+```java
+public static <T> T callSupplier(Supplier<T> supplier) {
+return supplier.get();
+}
+```
+```kotlin
+// Using SAM conversion to implement Supplier interface with a lambda
+val result = callSupplier { "Hello, World!" }
+
+val result: Int = callSupplier { 42 }
+val user: User = callSupplier { loadUserFromDb() }
+```

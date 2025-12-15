@@ -56,13 +56,66 @@ ABOUT:
 --- 
 
 ## My Adaption
+750 Fort Worth Avenue • Dallas TX 75208
+
+### Pitch
+Hi, my name is Christian like the religion, and I’m currently a Lead Android Developer at Neiman Marcus with over 13 years of experience in mobile application development across industries like FINANCE, LUXURY RETAIL, AUTOMOTIVE, and TRAVEL.
+
+At Neiman Marcus, I was brought in to modernize and scale the app.
+I:
+- Re‑architected the app into Clean MVVM Architecture with feature‑based Gradle modules, which sped up builds and made releases more predictable.
+- Improved performance and stability by profiling with Android Studio and Firebase, then introducing lazy loading, Coil for images, and better background initialization.
+- Hardened security with SSL pinning, token-based auth, and biometrics, and set up CI with GitHub Actions for automated testing.
+- led and developed a KMM module for sign-up and login as a PoC to evaluate cross-platform code sharing for iOS and Android.
+- Implemented native performance-critical features in C++ (JNI), optimizing image rendering,
+
+Before that, at Ally Bank, I worked on the "One Ally" ecosystem, bringing banking, auto, investing, and mortgage into a single app.
+There I:
+- Implemented a Zero Trust mobile security framework — including certificate pinning, token-based authentication (OAuth2), and mutual TLS communication for API traffic.
+- Enhanced app network stack using OkHttp interceptors, gRPC, and caching with encryption-at-rest for sensitive PII data.
+- Conducted threat modeling and vulnerability assessments to safeguard personally identifiable and financial data in line with PCI-DSS and GDPR regulations.
+- Developed advanced telemetry and real-time session validation for detecting anomalies (e.g., session hijacks, MITM attempts).
+
+I really enjoy collaborating with other engineers to build useful and engaging mobile experiences that solve real user problems.
+As my current project wraps up, I’m now looking for my next challenge, and I believe [Client/Company Name]
+would be a fantastic place to continue growing my career and contribute.
+
+
+--- 
+
+gRPC = Google Remote Procedure Call, a high-performance, open-source universal RPC framework that uses HTTP/2 for transport and Protocol Buffers as the interface description language.
+- substitute for REST -> more efficient, lower-latency communication, especially for streaming and bidirectional workflows.
+- uses .proto files to define service methods and message types, which can then be compiled into client and server code in multiple languages.
+- HTTP/2 instead of HTTP/1.1
+
+threat modeling = a structured approach to identifying and mitigating potential security threats in a system by analyzing its architecture, components, and data flows.
+- MITM, malware, rooted devices, token theft, replay attacks
+- outcomes: cert pinning, token handling, device integrity checks, logging separation
+vulnerability assessments = systematic evaluations of a system to identify security weaknesses that could be exploited by attackers.
+- automated scans, manual code reviews, penetration testing
+- 
+
+PCI-DSS = Payment Card Industry Data Security Standard, a set of security standards designed to ensure that all companies that accept, process, store or transmit credit card information maintain a secure environment.
+GDPR = General Data Protection Regulation, a regulation in EU law on data protection and privacy for all individuals within the European Union and the European Economic Area.
+- no PII in logs, encryption at rest, data minimization
+- keystore + encrypted DataStore for sensitive data (tokens, PII)
+
+real-time session validation = continuous monitoring and verification of user sessions to detect anomalies or suspicious activities that may indicate security threats, such as session hijacking or unauthorized access.
+- telemetry events (login success/failure, MFA challenges, pinning failures, device integrity failures)
+- short-lived access tokens + server-side session validation
+- token refresh patterns, impossible geolocation, abnormal device fingerprints
+- cert pinning failures (potential MITM) 
+- OUTCOME: 
+  - backend fraud/security teams can detect anomalies in near real time
 
 ### Architecture and Cross-Platform at Neiman Marcus
-OpenGL rendering and image processing were performance-critical, so I worked with C++ (JNI) and Rust modules to implement those features natively while exposing clean Kotlin interfaces. 
-That let us share core logic across Android and iOS via KMM/Swift while still delivering native performance where it mattered.
+OpenGL rendering and image processing were performance-critical, so I worked with C++ (JNI) modules to implement those features natively while exposing clean Kotlin interfaces.
+- Performed some image post-processing (e.g., color correction, downsampling, maybe background blur) off the UI thread.
+- Exposed a small, stable API to Kotlin through JNI so the Android layer just said things like renderFrame(), setZoom(level), or loadImage(uri).
+- This was reusable across Android, iOS, and web platforms since the core C++ logic was shared.
 
 ### Networking & Security at Ally Bank
-At Ally I helped push the mobile app toward a more Zero Trust, security-first posture rather than just “TLS and login”.
+At Ally I helped push the mobile app toward a more Zero Trust, security-first posture.
 
 On the networking side, I hardened the Android client so it never blindly trusted the environment. 
 I implemented SSL/SPKI pinning on top of TLS 1.2+ using OkHttp and networkSecurityConfig, so the app only talked to Ally’s real backends. 
@@ -256,6 +309,7 @@ In practice, my role was to translate those Zero Trust and compliance requiremen
   - Detecting rooted/jailbroken devices at a high level and applying policy (warn, restrict, or block).
     - **Rooted/jailbroken:** user (or malware) has elevated privileges, can bypass OS protections, tamper with app or traffic.
     - Detection (high level): look for known root binaries, writable system partitions, debug flags, abnormal environment.
+      - TODO: how? android we write code to detect for these things?
     - Policy: based on risk appetite, you might
       - Show a warning,
       - Restrict sensitive actions, or

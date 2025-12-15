@@ -51,6 +51,14 @@ Performance work in Android usually starts with a **symptom** (slow screen, jank
   - Run micro/macrobenchmarks on CI devices and fail the build if performance regresses beyond a threshold.  
   - Use it when: you want to **prevent regressions** as the team adds features.
 
+- **Recomposition Highlighter (Compose only)**  
+  - Visualizes which composables are recomposing during interactions.  
+  - Use it when: you notice **jank or slow UI updates** in Compose and want to optimize recompositions.
+
+- **Perfetto**  
+  - Advanced tracing tool that can capture system-wide traces, including CPU, GPU, and more.  
+  - Use it when: you need to analyze **complex performance issues** that span multiple processes or require detailed system insights.
+
 ### Production Environment (real user monitoring)
 
 - **Firebase Performance Monitoring (or similar APM)**  

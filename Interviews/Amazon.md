@@ -40,7 +40,7 @@ PREFERRED QUALIFICATIONS
 • Experience with deployments to the Play Store
 
 ## S3 Notes:
-### Wills
+### Will
 - publishing to play store -> 
   - signed AAB (Android App Bundle) 
   - track based releases (internal, alpha, beta, production)
@@ -129,6 +129,7 @@ R8/Proguard expertise
 - what other technologies do you have experience with?
 
 ## Second Round Questions:
+### Kal
 1) what is the android activity lifecycle
    - onCreate, onStart, onResume, onPause, onStop, onDestroy, onRestart
 2) what is mvvm
@@ -191,6 +192,171 @@ R8/Proguard expertise
       - the junior dev was already into animations and ui/ux so i paired with them on implementing some of the parallax effects on the home page which helped them grow their skills and confidence
       - they went from only taking small bug fixes to owning a feature even if it was just the parallax effects on the home page
 ![img.png](img.png)
+
+### James
+[S3](http://s3-storage-explorer.s3-website.ap-south-1.amazonaws.com/?video=Android%2FInterviews%2F2025-11-07-James-Halsten-Amazon-R1-P2.mkv&bucket=storage-solution)
+- video does not exist
+
+
+### Mike
+[S3](http://s3-storage-explorer.s3-website.ap-south-1.amazonaws.com/?video=Android%2FInterviews%2F2025-11-12_R1_Mike_Amazon.mkv&bucket=storage-solution)
+- starts at 6ish
+- Mike is muted 
+- this is a round 1
+
+- are you primarily kotlin or java?
+
+- what are data classes in kotlin?
+  - concise way to create classes that hold data
+  - less boilerplate than regular classes
+  - auto generates equals(), hashCode(), toString(), copy(), componentN() functions
+    - he follows up asking about functions of data classes, these above
+
+- familiar with launch and async in coroutines?
+- where would you use them?
+- using combine()?
+
+- example of an extension function
+  - String.isValidEmail(): Boolean {
+      return Patterns.EMAIL_ADDRESS.matcher(this).matches()
+    }
+  - ProductDto.toDomainModel(): Product {
+      return Product(id = this.id, name = this.name, price = this.price)
+    }
+
+- where are you currently located?
+  - dallas tx
+- project is coming to an end?
+- 
+
+### Janvi - Interviewer Anna
+[S3](http://s3-storage-explorer.s3-website.ap-south-1.amazonaws.com/?video=Android%2FInterviews%2F2025-11-21_R2_Janvi_Amazon.mkv&bucket=storage-solution)
+- starts at 3:50
+
+- Any experience with KMM and Compose?
+  - I imagine she'll ask about my experience with KMM -> have narrative ready
+  - weekend homework is finishing the KMM videos
+
+- do you have any iOS experience? 
+  - not looking for you to code, just working with iOS devs on cross platform projects
+  - say yes, working with iOS devs on KMM project and other places where we had to coordinate api contracts, ui/ux parity, etc.
+    - this would be normal for a lead role
+    - have i written swift? no, but I've read some swift code while working with iOS devs
+
+- you are tasked with building a compose screen with multiple cards, how would you handle recompositions?
+  - break down into smaller composables for each card -> only recomposes if state for that card changes
+  - state hoisting -> only pass down the data necessary for that card
+  - use remember for local state within the card
+  - use keys in lazy lists to avoid unnecessary recompositions
+  - use derivedStateOf for expensive calculations based on state
+  - launch side effects in LaunchedEffect or rememberCoroutineScope 
+  - marking composables as @Stable or @Immutable if their inputs don't change often or at all
+
+- are you familiar with side effects in compose? what do you use them for?
+  - they are code that runs in response to state changes or lifecycle events that we may not want to run on every recomposition
+  - we use effect handlers like LaunchedEffect, SideEffect, DisposableEffect, rememberCoroutineScope to manage side effects
+    - `rememberCoroutineScope` to launch coroutines tied to the composable's lifecycle
+    - `DisposableEffect` to run cleanup code when a composable leaves the composition -> useful for cancelling coroutines or unregistering listeners
+    - `SideEffect` to run code after every successful recomposition -> useful for logging or analytics
+    - `derivedStateOf` to optimize expensive calculations based on state changes
+    - `LaunchedEffect` to run suspend functions when certain keys change -> useful for one-time operations like fetching data or animations
+
+- what are lifecycles of activities?
+  - onCreate, onStart, onResume, onPause, onStop, onRestart, onDestroy, 
+
+- what is setContent in android? Why is it called in onCreate and not in onStart or onResume?
+  - setContent is the entry point that attaches a Compose Composition to your Activity (or Fragment/ComposeView) and tells it: “here is the root composable tree.” After that, recomposition is driven purely by state changes, not by calling setContent again.
+  - Those callbacks can run many times (e.g., when you navigate away and come back, or on configuration/lifecycle transitions).
+    - Each call would tear down and rebuild the whole composition tree.
+    - That defeats Compose’s optimizations and can cause bugs (lost remembered state, flicker, duplicated side effects).
+
+- how many times can onCreate be called in the lifecycle of an activity?
+  - only once when the activity is first created
+  - if the activity is destroyed and recreated (e.g., due to configuration changes), onCreate will be called again for the new instance
+    - can use ViewModel or rememberSaveable to persist state across recreations
+    - remember is only for recompositions, not recreations
+
+- what is the MVVM pattern?
+  - Model-View-ViewModel
+  - Model has our data and domain layers where we have our API calls, database access, business logic, use cases, etc.
+  - View is our UI layer where we have our activities, fragments, composables that display data and handle user interactions
+  - ViewModel is the mediator between Model and View, holds UI state, handles business logic, exposes data to the View via LiveData or StateFlow, and processes user actions from the View
+  - advantage is unidirectional data flow, separation of concerns, easier testing, better state management
+    - with unidirectional, data flows from Model -> ViewModel -> View, and user actions flow from View -> ViewModel -> Model
+
+- if you want to get data from a database what layer would that happen in?
+  - model layer -> different parts, but I usually build with a repository-pattern where the repository is the central point for data access for our view models, if it comes from a remote or local source the repository handles that logic
+
+- if you want to run multiple calls concurrently how would you do that?
+  - using coroutines for concurrency and asynchronous programming
+
+- do you know the difference between launch and async?
+  - launch starts a new coroutine that does not return a result, returns a Job, used for fire-and-forget tasks
+    - save to database, logging, updating UI state
+  - async starts a new coroutine that returns a result, returns a Deferred<T>, used for concurrent tasks that produce a value
+    - if we have a dashboard with multiple api calls to load user info, notifications, messages, etc. we can use async to start all calls concurrently and then await all results before updating the UI
+    - when we need to perform multiple independent network requests in **parallel** and **combine** their results
+
+- code challenge, what is the result of running this?
+  - RESULT: A C D B
+```kotlin
+fun main() = runBlocking {
+    launch {
+        println("A")
+        delay(50)
+        println("B")
+    }
+    launch {
+        println("C")
+        delay(10)
+        println("D")
+    }
+}
+```
+
+- do you work with a gradle build system for android? Are you familiar with the difference between build types vs flavors?
+  - build types define different versions of the app for different purposes (debug, release)
+    - debug build type has debugging features enabled, logging, no code shrinking
+    - release build type has optimizations enabled, code shrinking with R8/Proguard, signing configs for production
+  - flavors define different variants of the app for different environments or features (dev, staging, prod)
+    - each flavor can have its own applicationId, resources, dependencies
+    - add different constants through BuildConfig for each flavor (e.g., API endpoints, feature flags)
+    - or exclude certain features or modules for specific flavors
+  - build variants are combinations of build types and flavors (e.g., devDebug, prodRelease)
+
+- how do you use AI tools in your day to day work?
+  - At Neiman Marcus we’re encouraged to use AI tools, but always within clear company guidelines around security and data privacy. Day to day, I treat AI as an assistant, not an author.
+  - For brainstorming, I might use AI to generate ideas for feature implementations or UI designs, then critically evaluate and adapt those suggestions.
+  - sometimes for boilerplate or creating fake data for tests, I might use AI to generate code snippets, but I always review and modify them to ensure they meet our coding standards and security requirements.
+  - We've used some github-copilot for assisting with PR reviews
+    - it doesn't replace code reviews, but it can help catch common issues or suggest improvements faster - we can look at what it finds and decide if it's valid or not
+  - Our enterprise Copilot is configured to sanitize snippets—stripping out keys, secrets, and identifiers—and follows our governance policies so nothing leaks outside the org
+
+- if we were to ask you to lead a team? (novice, mid, senior) how comfortable would you be? what kind of tasks would you give them?
+  - i would feel very comfortable leading a team
+  - i would focus on clear communication of goals, setting expectations, and providing support
+    - help quickly unblock any technical issues
+    - facilitate collaboration and knowledge sharing
+    - why certain approach or architecture decisions were made -> help them grow and be more independent over time
+  - i would assign tasks based on each team member's strengths and growth areas
+    - for junior devs, i would give them smaller, well-defined tasks with clear requirements and provide mentorship
+    - for mid-level devs, i would give them more complex features or components to own end-to-end
+    - for senior devs, i would involve them in architecture decisions, code reviews, and mentoring others
+
+### Xavier
+[S3](http://s3-storage-explorer.s3-website.ap-south-1.amazonaws.com/?video=Android%2FInterviews%2F2025-11-21_R2_Xavier_Amazon.mkv&bucket=storage-solution)
+5 min video
+
+
+### Daniel
+[NextCloud](https://nextcloud-talk-recordings-itc-eit.s3.amazonaws.com/recordings/interviews/12-12-25-6-00PM-%20R1%20-%20Daniel%20A%20-%20Amazon%23-%231462182%23-%23INTERVIEW%23-%23TC/Recording%202025-12-12%2017-49-14.webm?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAWIHTASZ3FCQNXFGX%2F20251212%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20251212T185301Z&X-Amz-Expires=604800&X-Amz-Signature=361a753053843f415bba3e4b5cda3ac662e8d1b48eec7da04f888459d3870789&X-Amz-SignedHeaders=host)
+
+
+
+### Willard
+[NextCloud](https://nextcloud-talk-recordings-itc-eit.s3.amazonaws.com/recordings/interviews/25-11-25-9-00PM-%20R1%20-%20Willard%20C%20-%20Amazon%23-%231459485/Recording%202025-11-25%2020-52-27.webm?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAWIHTASZ3FCQNXFGX%2F20251212%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20251212T160115Z&X-Amz-Expires=604800&X-Amz-Signature=15600e5e6d26b4341386228cfd872ccfb2d747ee358dfa4a47f9d6577e5fc67e&X-Amz-SignedHeaders=host)
+
+
 
 ## Final Round Questions:
 ### Time where you had to collab with a designer or a PM
@@ -276,7 +442,7 @@ Follow up questions for regarding the live coding
    - The interviewer is looking for separation of concerns and DI: define a single `Repository` (or API service) interface, provide a singleton instance via Hilt, and inject it into any ViewModel that needs it. That way, multiple ViewModels share the same API client/repository instead of each creating its own, and you can easily mock it in tests.
 3. How would we use hilt
    - In addition to explaining `@Inject`, `@Module`, `@Provides`, and `@Singleton`, mention the big picture:
-   -  TODO: I imagine this is more than explaining @Inject, @Module, @Provides, @Singleton, etc., what else should I cover?
+   - TODO: I imagine this is more than explaining @Inject, @Module, @Provides, @Singleton, etc., what else should I cover?
 
 
 ## Questions I want to Ask
