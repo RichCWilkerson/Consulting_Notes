@@ -1,21 +1,10 @@
-Client Name    -    Amazon
-Implementor/Prime Vendor Name    -    Accenture
-Vendor Name    -    Vdart
-Date    -    12/3/2025
-Time    -    4:30
-Duration    -    30
-Mode    -    Zoom
-Interview with    -    Vendor
-Round    -    R1
-Live Coding    -    Yes
-Meeting Link    -    https://www.google.com/url?q=https%3A%2F%2Fvdart.zoom.us%2Fj%2F95294342681&sa=D&source=calendar&usd=2&usg=AOvVaw0r3X6JEYmGgR2W_15b3CYP
-FE location (for this interview)    -    Texas
+Current Address:
+750 Fort Worth Avenue • Dallas TX 75208
+Phone:
+(214) 329-1138
+Email:
+richardchristianwilkerson@gmail.com
 
-- Bad audio and no video
-http://s3-storage-explorer.s3-website.ap-south-1.amazonaws.com/?video=Android%2FInterviews%2F2025-11-05_R1_Willard_Amazon.mkv&bucket=storage-solution
-
-
-http://s3-storage-explorer.s3-website.ap-south-1.amazonaws.com/?video=Android%2FInterviews%2F2025-11-11_R1_Jack_Amazon.mkv&bucket=storage-solution
 
 ## Pitch:
 Hi, my name is Christian like the religion, and I’m currently a Lead Android Developer at Neiman Marcus with over 13 years of experience in mobile application development across industries like FINANCE, LUXURY RETAIL, AUTOMOTIVE, and TRAVEL.
@@ -37,6 +26,439 @@ There I:
 I really enjoy collaborating with other engineers to build useful and engaging mobile experiences that solve real user problems.
 As my current project wraps up, I’m now looking for my next challenge, and I believe [Client/Company Name]
 would be a fantastic place to continue growing my career and contribute.
+
+
+## Final Round Questions:
+
+
+### Mike
+1. How would you test Android app features end-to-end to ensure UI behaves correctly during user interactions, including orientation changes and back navigation?
+    - I use **instrumentation UI tests** to exercise real user flows:
+        - **Espresso** or the **Compose Testing Library** for in-app UI interactions (clicks, swipes, text input, back navigation).
+        - **UI Automator** when I need to interact outside my app (system dialogs, notifications, permission prompts).
+    - I design tests around **critical user journeys**:
+        - Example: login → browse products → add to cart → checkout.
+        - Assert visibility, content, and state at each step.
+    - For **orientation changes and configuration changes**:
+        - Instrumentation tests can call `activityScenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }` or use `UiDevice.setOrientationLeft()` / `setOrientationNatural()`.
+            - In Compose tests, you can similarly adjust orientation via the Activity or use a custom test rule that recreates the Activity to mimic configuration change.
+        - more simple can use `activityScenario.recreate()` to simulate any configuration change.
+        - After rotation, I assert that:
+            - State is preserved (e.g., cart contents, scroll position, form fields).
+                - compose -> rememberSaveable, viewmodel for state preservation
+            - No duplicate network calls or duplicated fragments.
+                - Duplicate fragments can happen if orientation changes trigger Activity/Fragment recreation but the code re-adds a Fragment on `onCreate` **without checking savedInstanceState**.
+                - Good tests make sure back navigation and rotation don’t accidentally stack the same Fragment multiple times.
+                    - `navigation.popBackStack()` should return to the previous screen cleanly -> removing the current Fragment instance.
+            - Compose navigation:
+                - did NavHost correctly restore the back stack after recreation?
+                - test backstack size, only one instance of each destination, navigation works the same after rotation.
+                - also, No duplicate network calls, No duplicate collectors, No duplicate analytics events
+                    - validates proper LaunchedEffect keys, ViewModel scoping, etc.
+        - back navigation:
+            - `pressBack()` in tests to simulate user pressing back button.
+            - Assert that the correct screen is shown, state is preserved, and no crashes occur, backstack size decreases by one.
+    - I run these tests as part of CI so that regressions in navigation/back handling or rotation are caught before release.
+
+> Espresso and Compose testing are both fully capable of testing configuration changes and back navigation because they run as instrumentation tests and participate in the Android lifecycle.
+> I explicitly trigger Activity recreation or device rotation, then assert state preservation, navigation stack integrity, and absence of duplicated UI or side effects.
+> These tests validate lifecycle correctness and architecture, not just UI clicks.
+
+2. When designing a cross-platform Android app that validates sign-in, how would you ensure consistent business logic and proper error handling?
+- I’d centralize auth and sign-in rules in a **KMM shared module** so Android and iOS use the same logic:
+    - Use Kotlin Multiplatform Mobile (KMM) for input validation, API calls, token handling, and error mapping.
+    - Expose a clean API like `signIn(email: String, password: String): SignInResult` that both platforms call.
+- The shared module owns the **core sign-in pipeline**:
+    - Input validation (email format, password length/complexity, required fields).
+    - Networking with Ktor (calling the auth endpoint, parsing responses).
+    - Mapping backend responses into domain models (user session, tokens, profile flags).
+    - Interpreting server error codes into domain errors, e.g. `InvalidCredentials`, `AccountLocked`, `MfaRequired`, `NetworkError`, `ServerError`.
+- For **error handling and consistency**:
+    - Return a sealed result type from the shared module (e.g. `Success(session)` / `Error(reason)`), so Android and iOS share the same error categories while mapping them to platform-specific UI messages.
+    - Log failures in a consistent, privacy-safe way (masked email, region, app version, error type) from the shared layer to help debug cross-platform issues.
+    - Add unit tests in the KMM module that cover happy path, invalid input, network errors, and edge cases so behavior is identical across platforms.
+- For **platform-specific concerns**, use `expect` / `actual`:
+    - Things like secure token storage, biometrics, and push notification registration stay platform-specific but are accessed through expected interfaces defined in KMM.
+    - The shared auth logic calls those abstractions, so the business flow stays shared while implementations differ per platform.
+- If KMM/shared code isn’t an option:
+    - I’d push as much of the sign-in logic as possible into a **backend service** (validation rules, error codes) and keep mobile thin.
+    - At minimum, maintain a **shared spec** for auth behavior and error contracts, and add automated tests so Android and iOS stay aligned.
+        - A shared spec here is a living document (or API contract) that defines valid inputs, error codes, and edge cases for sign-in. Both Android and iOS teams and backend agree to it so behavior stays consistent.
+
+> In a cross-platform sign-in flow I push as much logic as possible into a shared KMM module: validation, Ktor calls, and mapping backend responses into a sealed `SignInResult` with clear error types. 
+> Android and iOS both call the same API, so invalid credentials, lockouts, or MFA-required states are handled consistently. 
+> Platform-specific pieces like biometrics or secure storage live behind `expect/actual` interfaces. 
+> If KMM isn’t an option, I at least make sure we have a shared spec for auth rules and error codes and back it with automated tests so the two platforms don’t drift over time.
+
+3. How do you test the domain and repository layers in an Android app to ensure high code coverage and proper handling of Kotlin coroutines or Flow?
+- code coverage doesn't mean much without quality -> emphasize testing both happy and failure paths
+    - **Testing domain and repositories**:
+        - Use **JUnit** for unit tests with **MockK/Mockito** to mock data sources (API, DB, cache).
+            - MockK is great for Kotlin due to better support for coroutines and final classes.
+        - Keep these tests JVM-only (no Android dependencies) so they’re fast and run in CI on every push.
+    - **Coroutines**:
+        - Use `kotlinx-coroutines-test` (`runTest`, `StandardTestDispatcher`) to control virtual time.
+        - Inject a `CoroutineDispatcher` into use cases/repositories so tests can pass a `TestDispatcher` and avoid relying on `Dispatchers.IO/Main`.
+        - Verify proper cancellation and error propagation by simulating failures in mocked data sources.
+    - **Flow**:
+        - Use the **Turbine** library (`flow.test { ... }`) to assert emissions:
+            - Check the sequence: `Loading` → `Success` or `Loading` → `Error`.
+            - Verify that certain actions (e.g., refresh) trigger new emissions, but no unintended duplicates.
+                - Duplicates can happen if the repository re-emits the same state on every call, or if the ViewModel maps streams in a way that causes redundant emissions.
+                    - I usually assert that making the same call twice without data changes does **not** produce extra `Success` states, or that UI transformations use `distinctUntilChanged`-style behavior where appropriate.
+        - Test edge cases: empty lists, errors, retries, and backpressure where relevant.
+            - **Backpressure** in Flows means controlling how producers (emitting values into a Flow/StateFlow) behave when consumers (collectAsState()) are slow. 
+              - For `Flow`, this shows up with operators like `buffer`, `conflate`, and `debounce`.
+                - In tests, I simulate slow collectors (e.g., with `delay` in the test) and assert that, with `conflate`, only the latest value is delivered, or with `buffer`, upstream isn’t blocked.
+            - Common **retry** mechanisms in Flows include `retry`, `retryWhen`, or wrapping the flow in a use case that re-subscribes on failure. 
+              - In tests, I mock the data source to fail the first N times, then succeed, and assert that:
+                - The flow retries the expected number of times.
+                - The final emission is `Success` or `Error` according to the policy.
+    - Overall, I aim for tests that validate **both happy-path and failure-path behavior** so that concurrency, retries, and error mapping are all covered.
+
+> For domain and repositories I lean heavily on fast JVM tests. 
+> I use JUnit with MockK or Mockito to fake out APIs and databases, and `kotlinx-coroutines-test` so I can run suspending functions under `runTest` with a test dispatcher instead of `Dispatchers.IO`. 
+> For Flows I usually use Turbine to assert the exact sequence of states, like `Loading` then `Success` or `Error`, and I simulate failures and retries to make sure cancellation and error propagation behave as expected. 
+> The goal isn’t just coverage—it’s to exercise both the happy path and the error paths so I’m confident the app does the right thing when APIs are slow, fail, or return edge-case data.
+
+4. Can you describe a time when you encountered a non-crashing but impactful bug in production, and how you approached trade-offs between speed and maintainability in fixing it?
+    - In production, some Neiman Marcus users reported that valid promo codes were showing as “not applicable” at checkout. The app never crashed, but it clearly affected conversion and customer trust.
+    - It was hard to reproduce: it only happened for certain combinations of **region, currency, and promo rules**. (e.g., USD users in Canada with specific cart contents).
+    - **Investigation**:
+        - I worked with analytics and logging to slice the data by promo code, country, currency, and cart composition.
+            - On the client we used structured logging and analytics events (for example via Firebase Analytics/Crashlytics) to capture promo usage, error codes, and context like region and currency.
+            - On the backend side, our observability stack (e.g. Datadog or a similar dashboarding tool) helped us correlate spikes in promo failures with specific promo IDs and the new response field.
+            - Concretely, the backend started sending a new field (for example, a `promoScope` or `eligibilityReason` flag).
+                - Our client mapper didn’t recognize it, so the discount logic fell back to a conservative branch meant for “unknown promo types,” which rejected some legitimate promos instead of treating the new flag as compatible.
+        - On the client side, our discount logic was falling back to a conservative path whenever that field was unrecognized, which effectively rejected some valid promos.
+    - **Short-term fix (speed)**:
+        - Implemented a **targeted fix** in the existing promo calculation class, behind a feature flag.
+            - The feature flag wasn’t per-user; it allowed us to **toggle the new interpretation logic on/off** quickly. We could enable it for all users once we were confident, and disable it if we saw unexpected behavior in specific regions or promo campaigns.
+        - Updated the mapping layer to correctly interpret the new field while keeping the previous behavior as a fallback.
+            - The mapping layer here is the code that converts **raw API response models** into **domain models** the promotion engine understands. Fixing it meant updating that conversion so new backend fields mapped to the correct domain enums/flags instead of falling into “unknown.”
+        - Paired with QA to create **focused regression tests** around checkout flows using high‑value promos, and monitored metrics closely after rollout.
+    - **Long-term improvement (maintainability)**:
+        - Once the immediate issue was stable, I refactored the discount logic into a dedicated `PromotionEngine` with:
+            - Clear separation between raw API models and domain models.
+            - Unit tests that covered combinations of currency, region, and promo types.
+        - We also **documented the incident** and added observability (structured logs & dashboards) for promo failures and fallback paths, so future changes in backend fields would surface faster.
+            - By observability I mean better **logging, metrics, and dashboards**. On Android we logged structured events (promo ID, masked user ID, region, error code) via our analytics/observability stack (e.g., Firebase Analytics/Crashlytics, Datadog/New Relic, or a custom logging pipeline). On the backend, those signals were aggregated into dashboards so product/engineering could quickly spot spikes in promo failures.
+    - This approach balanced **speed to protect revenue** with a **follow-up refactor** that made the system more robust and easier to evolve.
+
+> We had a production bug at Neiman Marcus where some valid promo codes showed as “not applicable” at checkout. 
+> It never crashed, but it clearly hurt conversion. 
+> Using client analytics and backend dashboards we narrowed it down to a new field in the promo API that our client didn’t understand, so the discount logic fell back to a conservative branch and rejected those promos. 
+> In the short term we added a targeted fix and wrapped it in a feature flag so we could turn the new behavior on or off quickly, plus added regression tests around affected flows. 
+> Once things were stable, I refactored that logic into a dedicated promotion engine with clear mappings from API to domain and better observability. 
+> That way we moved fast to protect revenue, then came back to improve the design so similar changes would be safer in the future.
+
+5. How do you ensure scalability, maintainability, and faster release cycles in large Android projects?
+    - **Modular architecture**:
+        - Split the app into **feature-based Gradle modules** (e.g., `feature-cart`, `feature-profile`, `feature-search`) plus shared core modules.
+        - This speeds up builds, enforces boundaries, and allows teams to work more independently.
+    - **Clean architecture / MVVM**:
+        - Use a layered approach (UI → ViewModel → UseCases/Repositories → Data sources) so business logic is testable and not tied to the UI framework.
+        - Rely on unidirectional data flow (e.g., StateFlow) for predictable state management.
+    - **CI/CD pipelines**:
+        - Configure CI to run unit tests, lint, and instrumentation tests (or a **smoke suite**) on every PR.
+            - A smoke suite is a **small set of high-value tests** (end-to-end or integration) that exercise the most critical flows—like login, basic navigation, and a simple checkout—so you quickly know if a build is fundamentally broken without running the entire test matrix every time.
+        - Use track-based Play Store releases (internal, alpha, beta, production) with staged rollouts to reduce blast radius.
+    - **Code quality practices**:
+        - Enforce code reviews, static analysis (Detekt, ktlint), and shared coding standards.
+        - Encourage small, focused PRs and good documentation of modules and contracts.
+    - **Feature flags and configuration**:
+        - Use feature flags/remote config so new features can be tested and gradually rolled out without blocking releases.
+
+> On larger Android apps I focus on both structure and pipeline. 
+> Structurally, I like feature-based Gradle modules and a clean MVVM architecture so business logic lives in use cases and repositories instead of Activities, which makes things easier to test and reuse. 
+> On the delivery side, we wire everything into CI/CD: every PR runs unit tests, lint, and a small smoke suite of UI tests, and releases go through track-based rollouts with feature flags so we can dark-launch and gradually expose new functionality. 
+> Combined with code reviews and static analysis, that setup lets multiple teams move in parallel and ship frequently without constantly firefighting regressions.
+
+6. Can you describe a time when you had to take a deliberate technical shortcut in an Android project? How did you manage the risks?
+    - On one project we had a **new API endpoint** that marketing wanted to surface quickly for a limited-time campaign (e.g., a curated holiday collection in the Neiman Marcus app).
+    - Given the tight deadline, we made a conscious decision to **ship a minimal implementation first**:
+        - Version 1 had the core happy path only: fetch data from the new endpoint and display it.
+        - We deferred full offline support, detailed error states, analytics fine-tuning, and some refactoring that we knew would be ideal.
+    - To manage the risks:
+        - I clearly **communicated the trade-offs** to product and stakeholders: what we were shipping now, what was intentionally missing, and what the user impact would be if the API failed.
+        - We **documented the gaps** as explicit tech debt tickets (e.g., improved retry/backoff, offline caching, richer error UX).
+        - Put the new feature behind a **feature flag**, so we could quickly disable it if the endpoint misbehaved without a full app release.
+    - After the campaign:
+        - We scheduled time to **harden the feature**: add proper error handling, offline/cache behavior, and analytics, and clean up any shortcuts in the implementation.
+        - We also looked at what parts of the solution (network layer, UI components) could be **reused** for future seasonal campaigns or similar promo integrations.
+    - This showed we could move fast when needed, but in a controlled way, and then come back to invest in maintainability once the immediate business goal was met.
+
+> On one project marketing needed a new campaign experience live before a hard date, but the ideal solution required refactoring our navigation stack and adding full offline and analytics support. To hit the window, I proposed a conscious shortcut: build a minimal happy-path implementation, duplicate a small bit of logic instead of refactoring everything, and hide it behind a feature flag. We documented the missing pieces as tech debt tickets and added basic tests around the critical path. After the campaign, we scheduled time to fold that flow back into the main architecture and clean up the duplication. That way we met the business goal without pretending the shortcut was a permanent solution.
+
+7. How do you structure your Android app to make data sources easily swappable and testable?
+    - I use the **Repository pattern** to abstract data access away from the UI:
+        - Define interfaces like `BillsRepository`, `UserRepository`, etc. that expose use-case-friendly methods.
+        - Under the hood, repositories coordinate **data sources**: `ApiDataSource`, `CacheDataSource`, `DatabaseDataSource`, etc.
+    - **Dependency Injection (Hilt/Dagger)**:
+        - Use DI to provide concrete implementations at runtime and allow tests to inject fakes or mocks.
+        - For example, in production provide `ApiBillsDataSource`, in tests provide an in-memory fake.
+    - **Composition over inheritance**:
+        - The repository composes multiple data sources and decides when to read/write from each.
+        - This makes swapping a data source (e.g., moving from Room to DataStore for certain data) largely a wiring change.
+    - **Testing**:
+        - In unit tests, I mock or fake the data sources and assert that the repository correctly handles success/failure, caching logic, and ordering of calls.
+            - Here “fake” can mean two things: either **test doubles** that implement the same interface but return in-memory data, or using a mocking framework (MockK/Mockito) to stub responses. I like using simple in-memory fakes for positive paths and mocks for more complex interaction verification.
+
+> I usually hide all external data sources behind repositories. So ViewModels talk to something like `BillsRepository`, and that repository coordinates one or more data sources—API, cache, database. That gives me a single abstraction to swap implementations for dev vs prod vs tests. With Hilt or Dagger I can provide different bindings at runtime and in tests inject in‑memory fakes or mocks. The repository decides when to read from cache or fall back to the network, and my unit tests assert that behavior without ever hitting the real API or disk. That structure makes both swapping and testing data sources straightforward.
+
+14. Implement a testable repository in Android to fetch upcoming bills, allowing easy swapping of data sources like API or cache.
+```kotlin
+interface BillsDataSource {
+    suspend fun getUpcomingBills(): List<Bill>
+}
+
+class ApiBillsDataSource(private val apiService: ApiService) : BillsDataSource {
+    override suspend fun getUpcomingBills(): List<Bill> {
+        return apiService.fetchUpcomingBills()
+    }
+}
+
+class CacheBillsDataSource(private val cache: BillsCache) : BillsDataSource {
+    override suspend fun getUpcomingBills(): List<Bill> {
+        return cache.getCachedBills()
+    }
+}
+
+class BillsRepositoryImpl(
+    private val apiDataSource: BillsDataSource,
+    private val cacheDataSource: BillsDataSource,
+    private val cache: BillsCache,
+) : BillsRepository {
+
+    override suspend fun getUpcomingBills(): List<Bill> {
+        val cachedBills = cacheDataSource.getUpcomingBills()
+        if (cachedBills.isNotEmpty()) {
+            return cachedBills
+        }
+
+        val apiBills = apiDataSource.getUpcomingBills()
+        if (apiBills.isNotEmpty()) {
+            cache.saveBills(apiBills)
+        }
+        return apiBills
+    }
+}
+```
+- This design:
+    - Keeps `BillsRepository` as the abstraction the rest of the app uses.
+    - Makes each data source testable in isolation.
+    - Allows tests to easily swap in a fake API or fake cache implementation.
+
+> In practice this pattern means my UI never cares whether bills came from the network or a cache—it just depends on `BillsRepository`. Under the hood the repository can prefer cache, then fall back to API and save results, and in tests I can plug in simple fakes for `BillsDataSource` and `BillsCache` to cover all combinations. That keeps the app flexible if we change backends or caching strategies later, and it makes unit tests very focused and fast.
+
+15. How would you represent a loading state in Android when no additional data (like message or progress) is needed?
+    - I usually model UI state with a **sealed class** so states are explicit and exhaustively handled:
+```kotlin
+sealed class BillsUiState {
+    object Loading : BillsUiState() // object = single instance, no payload
+    data class Success(val bills: List<Bill>) : BillsUiState()
+    data class Error(val message: String) : BillsUiState()
+}
+```
+- `Loading` is an `object` because:
+    - It doesn’t carry extra data.
+    - It represents a single, shared state, so a singleton is appropriate.
+- In Kotlin there is also a `data object` (since Kotlin 1.9), which is like an object but participates in generated functions; for this simple loading case, a plain `object` is sufficient.
+
+> When I just need to represent “we’re loading” with no extra information, I model it as a `Loading` object inside a sealed UI state. Using an `object` makes it clear there’s only one logical loading state and avoids allocating multiple instances. In Compose or XML I switch on the sealed class and show a spinner when I see `Loading`, the content for `Success`, or an error view for `Error`. It keeps UI state explicit and exhaustively handled in a when-expression.
+
+16. How can you structure shared business logic in Android so that multiple ViewModels can access it efficiently using StateFlow?
+17. How can shared business logic be implemented using StateFlow so it can be reused across multiple ViewModels?
+- The idea is to put **shared business logic and state** in a **separate class** (use case/manager), not in a particular ViewModel:
+    - For example, a `SessionManager`, `CartManager`, or `VehicleSelectionManager`.
+- That class owns a **`MutableStateFlow`** internally and exposes a read-only `StateFlow`:
+```kotlin
+class SessionManager @Inject constructor() {
+    private val _sessionState = MutableStateFlow<SessionState>(SessionState.LoggedOut)
+    val sessionState: StateFlow<SessionState> = _sessionState
+
+    suspend fun login(/* params */) {
+        // update _sessionState based on result
+    }
+
+    fun logout() {
+        _sessionState.value = SessionState.LoggedOut
+    }
+}
+```
+- Multiple ViewModels **inject the same instance** (via Hilt/Dagger) and collect from `sessionState`:
+```kotlin
+@HiltViewModel
+class HomeViewModel @Inject constructor(
+    private val sessionManager: SessionManager
+) : ViewModel() {
+    val sessionState: StateFlow<SessionState> = sessionManager.sessionState
+}
+
+@HiltViewModel
+class ProfileViewModel @Inject constructor(
+    private val sessionManager: SessionManager
+) : ViewModel() {
+    val sessionState: StateFlow<SessionState> = sessionManager.sessionState
+}
+```
+- With Hilt, you typically provide `SessionManager` as a singleton in a module:
+```kotlin
+@Module
+@InstallIn(SingletonComponent::class)
+object SessionModule {
+
+    @Provides
+    @Singleton
+    fun provideSessionManager(): SessionManager = SessionManager()
+}
+```
+- Yes, the **UseCase/Manager holds the `MutableStateFlow` and exposes `StateFlow`**.
+- ViewModels usually **do not each have their own copies** of that shared state; they just collect or map the shared `StateFlow` into their own UI state.
+- This avoids duplication of business logic and ensures all ViewModels see the same source of truth.
+
+> For shared business logic I like to pull it out of individual ViewModels into a manager or use-case class that owns a `MutableStateFlow` and exposes it as `StateFlow`. For example, a `SessionManager` can hold the current auth state and multiple ViewModels inject the same instance via Hilt. Each ViewModel just collects `sessionState` and maps it into its own UI state, so login/logout propagates everywhere consistently. That avoids duplicating logic and makes it clear where the single source of truth for that concept lives.
+
+18. How can you use Hilt to provide a singleton repository instance that can be injected into multiple ViewModels in an Android app?
+    - Define the repository implementation and mark it as injectable:
+```kotlin
+// TODO: is this inside the @Module or somewhere else?
+@Singleton
+class BillsRepositoryImpl @Inject constructor(
+    private val apiDataSource: ApiBillsDataSource,
+    private val cacheDataSource: CacheBillsDataSource
+) : BillsRepository {
+    // ...implementation...
+}
+```
+    - Create a Hilt module that tells Hilt how to bind the implementation to the interface:
+```kotlin
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class RepositoryModule {
+
+    @Binds
+    @Singleton
+    abstract fun bindBillsRepository(
+        impl: BillsRepositoryImpl
+    ): BillsRepository
+}
+```
+    - Inject the repository into ViewModels using `@HiltViewModel` and constructor injection:
+```kotlin
+@HiltViewModel
+class BillsViewModel @Inject constructor(
+    private val billsRepository: BillsRepository
+) : ViewModel() {
+    // use billsRepository here
+}
+```
+    - Hilt ensures there is **one singleton instance** of `BillsRepositoryImpl` in the `SingletonComponent`, and all ViewModels that depend on `BillsRepository` get that same instance.
+
+> TODO: interview response
+
+
+## Questions I want to Ask:
+- team size
+- Are you trying to make something like Starlink App?
+- tech stack -> heard you are possibly looking at KMP/CMP
+
+---
+
+### Janvi
+
+1. Time where you had to collab with a designer or a PM
+What they want:
+- Can you communicate well with non-engineers?
+- Do you push back respectfully and negotiate scope/UX/technical constraints?
+- Do you think in terms of user impact and business goals, not just code?
+
+ANSWER:
+- Context: “We were redesigning the home page with richer media and personalization.”
+- Collaboration: “Design wanted a different complex animations for each section and PM wanted it live before a seasonal campaign.”
+    - horizontal pager with parallax images
+        - Parallax images are images that move at a different speed than the foreground content as the user scrolls or swipes, creating a depth effect (background moves more slowly than the foreground).
+        - In our case, product images in the background scroll slightly offset from the cards/text to give a premium, layered feel.
+- What you did: “I walked them through performance constraints on low-end devices and proposed picking 2 animations for reusability and a phased rollout. I also suggested we reuse existing components to hit the date.”
+- Result: “We shipped on time, hit the campaign window, and the experience still felt premium without blowing up engineering effort.”
+
+2. How did you deal with maintainability?
+What they want:
+- Do you design/code so others can work on it easily later?
+- Can you explain concrete practices, not just “we follow clean code”?
+- Do you think about refactoring, modularization, tests, and reducing tech debt?
+    - tech debt is any code that is not maintainable or scalable in the long term
+        - some decisions are made to hit deadlines but need to be revisited later so we tag them as tech debt
+        - examples: duplicated code, lack of tests, poor architecture, lack of documentation, etc.
+
+NOTES:
+- modularization (CLEAN)
+    - built modules around features (auth, product listing, cart, checkout)
+    - faster build times, clearer ownership boundaries, easier testing
+    - have debated breaking product listing into smaller modules (search, filters, recommendations) but held off for now due to overlap
+- separation of concerns (MVVM, repository pattern)
+    - Repository pattern -> hides if data comes from network or local db (cache). One source of truth for data.
+    - use cases -> verbs (GetProducts, AddToCart, etc.) that orchestrate repositories and business logic. Rules live here (pricing, inventory checks, eligibility, retries analytics hooks, etc.)
+- shared composable functions and themes
+    - shared card component for product listing
+    - shared button and dropdown components
+    - catalog of shared horizontal pager component with different parallax effects we can plug and play with
+- documentation
+    - reasoning for architecture decisions
+    - how to add new features or components
+- CI
+    - static analysis with detekt/ktlint
+    - unit tests for ViewModels and repositories
+    - UI tests for critical flows with Espresso
+
+ANSWER:
+I’ve treated maintainability as a combination of architecture, reuse, and guardrails, not just ‘clean code’.
+Architecturally, we broke the app into a few feature‑based modules—auth, product listing, cart, checkout—rather than a single monolith. That gave us clearer ownership and faster incremental builds without overwhelming the team with dozens of tiny modules. Each feature used a consistent MVVM + use case + repository structure: ViewModels handle UI state, use cases encode business rules like GetProductList or PlaceOrder, and repositories hide whether data comes from network, cache, or local DB. That separation made it easy to change backends or data sources without touching the UI.
+To keep the UI maintainable, we invested in shared composable components and theming: a single product card, shared button and dropdown components, and a reusable horizontal pager with pluggable parallax effects. That reduced duplicated UI logic and kept design changes localized.
+From a process perspective, we enforced standards with CI: Detekt/ktlint for style and smells, unit tests around ViewModels and repositories, and Espresso tests for critical flows like login and checkout. We treated tech debt explicitly—legacy god classes, duplicated networking code, and inconsistent UI components were tracked in the backlog and refactored incrementally as we touched those areas.
+As a lead, my focus was to make sure new work fit these patterns, that modules stayed loosely coupled, and that we always had enough tests and automation in place so other engineers could safely extend the app without fear of breaking core flows.”
+
+3. Example of a short cut you took when you were under a time crunch
+What they want:
+- You are honest about tradeoffs and not dogmatic.
+- You know when to cut corners and how to contain the risk.
+- You always think in terms of: impact, risk, and follow-up cleanup.
+
+Intentional shortcuts:
+- Duplicating a small piece of code instead of over-abstracting to hit a deadline.
+- Shipping without full test coverage but adding smoke tests for the critical path.
+- Implementing a simpler UX variant for v1, planning v2 once metrics are validated.
+
+ANSWER:
+- Context: “We had to add a new promo banner flow before Black Friday, but the ideal solution required refactoring the navigation stack.”
+- Shortcut: “To hit the date, I added a small, isolated navigation path and repeated some logic instead of refactoring everything.”
+- Risk management: “I wrapped it behind a feature flag, added basic UI tests, and documented it as tech debt in our backlog.”
+- Follow-up: “After the sale, we refactored the navigation properly and removed the duplication. The short-term hack let us capture the revenue opportunity without destabilizing the rest of the app.”
+
+
+4. When have you had a disagreement with a peer about a technical approach? How did you resolve it?
+- aquisition by Sax Global
+- at Ally Bank I owned a feature that I started writing in compose -> I was told to switch to XML for consistency with the rest of the app
+
+---
+
+Live coding
+1. android with payment dates with an api
+2. design how you would fetch the data from the api
+
+---
+
+Follow up questions for regarding the live coding
+1. Why is  "Loading" an object when it comes to a sealed class
+    - In a sealed class hierarchy that models UI state (e.g., `Success`, `Error`, `Loading`), we often make `Loading` an `object` because it has **no data** and there is only one logical instance of it. Using an `object` avoids unnecessary allocations and makes intent clear: `Loading` is just a marker state, not a value that changes.
+    - objects are singletons in Kotlin, so we don’t need multiple instances of `Loading`. It also simplifies equality checks since all references to `Loading` point to the same instance.
+2. Api how would you make that available to multiple view models
+    - use repository pattern and DI with Hilt
+    - The interviewer is looking for separation of concerns and DI: define a single `Repository` (or API service) interface, provide a singleton instance via Hilt, and inject it into any ViewModel that needs it. That way, multiple ViewModels share the same API client/repository instead of each creating its own, and you can easily mock it in tests.
+    -
+3. How would we use hilt
+    - In addition to explaining `@Inject`, `@Module`, `@Provides`, and `@Singleton`, mention the big picture:
+    - TODO: I imagine this is more than explaining @Inject, @Module, @Provides, @Singleton, etc., what else should I cover?
 
 
 
@@ -63,10 +485,12 @@ PREFERRED QUALIFICATIONS
 • iOS mobile application development experience in Swift
 • Experience with deployments to the Play Store
 
+---
+
 ## S3 Notes:
 ### Will
-- publishing to play store -> 
-  - signed AAB (Android App Bundle) 
+- publishing to play store ->
+  - signed AAB (Android App Bundle)
   - track based releases (internal, alpha, beta, production)
   - R8 and Proguard for code shrinking and obfuscation
 
@@ -94,8 +518,8 @@ R8/Proguard expertise
 - Watching for issues that only appear in minified builds and knowing how to debug them.
   - common pitfalls: missing keep rules, obfuscated method names in reflection, serialization issues.
 
-- experience with cross platform flutter or react native? 
-- how would you decide to use cross platform vs native? 
+- experience with cross platform flutter or react native?
+- how would you decide to use cross platform vs native?
   - performance requirements
   - team skillset
   - time to market
@@ -107,13 +531,13 @@ R8/Proguard expertise
 ### Jack
 - primary language at recent job? Kotlin
 
-- explain current app 
+- explain current app
 
 - where are you currently located? Dallas TX
 
 - willing to relocate? yes
 
-- what are data classes? 
+- what are data classes?
   - like POJOs but with more features
   - auto generated equals(), hashCode(), toString(), copy(), componentN() functions
   - concise class to hold data
@@ -135,7 +559,7 @@ R8/Proguard expertise
 
 - what are extension functions in Kotlin?
   - extending existing classes with new functionality without inheriting or modifying the original class
-  - e.g. 3rd party libraries 
+  - e.g. 3rd party libraries
   - e.g. adding utility functions to String, List, etc.
   - if i want to extend the String class to add a function to check if it's a valid email
 
@@ -164,13 +588,13 @@ R8/Proguard expertise
 3) do you have experience in jetpack compose
     - yes, used it in recent projects for building UI declaratively
     - advantages: less boilerplate, easier state management, better tooling, ui caches (better performance)
-      - story: in neiman marcus app we had performance issues with xml due to heavy media usage 
+      - story: in neiman marcus app we had performance issues with xml due to heavy media usage
         - -> my migrating certain screens to compose we were able to improve performance and stability by reducing unnecessary recompositions and leveraging ui caches
 4) what does remember do
     - used to store state across recompositions in compose
     - You can mention rememberSaveable if you want a bonus point: survive configure changes
 5) coroutines, rx java , threading
-    - coroutines: lightweight threads for async programming in **Kotlin**, 
+    - coroutines: lightweight threads for async programming in **Kotlin**,
       - advantages over threads: less memory overhead, structured concurrency, easier to read and maintain, pause and resume
       - When you’d use them: network calls, database I/O, parallel work in a ViewModel using viewModelScope, Flow for streams.
     - rx java: reactive programming library for composing async and event-based programs using observable sequences, advantages: powerful operators for transforming streams, backpressure handling, good for complex event chains
@@ -179,12 +603,12 @@ R8/Proguard expertise
     - threading: managing multiple threads for concurrent execution, use cases: background tasks, network calls, ui updates
       - Benefits: full control, but easy to get wrong (leaks, race conditions, hard cancellation).
       - On Android you mostly hide this behind coroutines/Rx or higher-level APIs instead of managing threads directly.
-    - “On Android today I default to Kotlin coroutines and Flow for async work, because they give me structured concurrency, cancellation, and readable code. 
-      I still understand RxJava and have used it for complex reactive pipelines in older codebases, but I wouldn’t start a new project with it unless the team is heavily invested in Rx. 
+    - “On Android today I default to Kotlin coroutines and Flow for async work, because they give me structured concurrency, cancellation, and readable code.
+      I still understand RxJava and have used it for complex reactive pipelines in older codebases, but I wouldn’t start a new project with it unless the team is heavily invested in Rx.
       Raw threads I reserve for very low-level cases; in app code I generally let coroutines or Rx manage threading on top of executors.”
 6) what is launch and async
     - launch: starts a new coroutine that does not return a result, returns a Job, used for fire-and-forget tasks
-      - story: for single api calls or database writes in the view model where we don't need a return value 
+      - story: for single api calls or database writes in the view model where we don't need a return value
     - async: starts a new coroutine that returns a result, returns a Deferred<T>, used for concurrent tasks that produce a value
       - story: we have an async case for the home screen to load the promotions, user info, recommendations, and categories in parallel using async, then awaited all results before updating the UI state
 7) a unit test fails in the cicd pipeline, how would you go about debugging
@@ -201,7 +625,7 @@ R8/Proguard expertise
     - used for different environments (dev, staging, prod), feature variants (free vs paid), or branding (white-label apps)
     - configured in the build.gradle file with specific settings for each flavor (applicationId, resources, dependencies)
     - build variants are combinations of product flavors and build types (debug, release)
-    - Interviewers usually want to hear that you’ve used flavors in practice, not just definitions. 
+    - Interviewers usually want to hear that you’ve used flavors in practice, not just definitions.
       - For example: “At Neiman Marcus we had `dev`, `uat`, and `prod` flavors with different base URLs, feature flags, and analytics keys. QA used the UAT flavor against staging backends, while `prod` was locked down and tied to production services.”
 9) agile methodology
     - iterative approach to software development focused on collaboration, flexibility, and customer feedback
@@ -225,7 +649,7 @@ R8/Proguard expertise
 ### Mike
 [S3](http://s3-storage-explorer.s3-website.ap-south-1.amazonaws.com/?video=Android%2FInterviews%2F2025-11-12_R1_Mike_Amazon.mkv&bucket=storage-solution)
 - starts at 6ish
-- Mike is muted 
+- Mike is muted
 - this is a round 1
 
 - are you primarily kotlin or java?
@@ -251,7 +675,7 @@ R8/Proguard expertise
 - where are you currently located?
   - dallas tx
 - project is coming to an end?
-- 
+-
 
 ### Janvi - Interviewer Anna
 [S3](http://s3-storage-explorer.s3-website.ap-south-1.amazonaws.com/?video=Android%2FInterviews%2F2025-11-21_R2_Janvi_Amazon.mkv&bucket=storage-solution)
@@ -261,7 +685,7 @@ R8/Proguard expertise
   - I imagine she'll ask about my experience with KMM -> have narrative ready
   - weekend homework is finishing the KMM videos
 
-- do you have any iOS experience? 
+- do you have any iOS experience?
   - not looking for you to code, just working with iOS devs on cross platform projects
   - say yes, working with iOS devs on KMM project and other places where we had to coordinate api contracts, ui/ux parity, etc.
     - this would be normal for a lead role
@@ -273,7 +697,7 @@ R8/Proguard expertise
   - use remember for local state within the card
   - use keys in lazy lists to avoid unnecessary recompositions
   - use derivedStateOf for expensive calculations based on state
-  - launch side effects in LaunchedEffect or rememberCoroutineScope 
+  - launch side effects in LaunchedEffect or rememberCoroutineScope
   - marking composables as @Stable or @Immutable if their inputs don't change often or at all
 
 - are you familiar with side effects in compose? what do you use them for?
@@ -412,377 +836,6 @@ starts at 8
 2nd round with Anna
 
 
-## Final Round Questions:
-
-
-### Mike
-1. How would you test Android app features end-to-end to ensure UI behaves correctly during user interactions, including orientation changes and back navigation? 
-   - I use **instrumentation UI tests** to exercise real user flows:
-     - **Espresso** or the **Compose Testing Library** for in-app UI interactions (clicks, swipes, text input, back navigation).
-     - **UI Automator** when I need to interact outside my app (system dialogs, notifications, permission prompts).
-   - I design tests around **critical user journeys**:
-     - Example: login → browse products → add to cart → checkout.
-     - Assert visibility, content, and state at each step.
-   - For **orientation changes and configuration changes**: 
-     - Most frameworks don’t auto-rotate for you; in practice you **manually rotate** the device/emulator from the test:
-       - Instrumentation tests can call `activityScenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }` or use `UiDevice.setOrientationLeft()` / `setOrientationNatural()`.
-       - In Compose tests, you can similarly adjust orientation via the Activity or use a custom test rule that recreates the Activity to mimic configuration change.
-     - After rotation, I assert that:
-       - State is preserved (e.g., cart contents, scroll position, form fields).
-       - No duplicate network calls or duplicated fragments.
-         - Duplicate fragments can happen if orientation changes trigger Activity/Fragment recreation but the code re-adds a Fragment on `onCreate` **without checking savedInstanceState**. Good tests make sure back navigation and rotation don’t accidentally stack the same Fragment multiple times.
-     - In Compose, I verify that state is coming from `ViewModel`/`rememberSaveable` so recomposition + recreation behaves correctly.
-   - I run these tests as part of CI so that regressions in navigation/back handling or rotation are caught before release.
-
-2. When designing a cross-platform Android app that validates sign-in, how would you ensure consistent business logic and proper error handling?
-  - I’d centralize auth and sign-in rules in a **KMM shared module** so Android and iOS use the same logic:
-    - Use Kotlin Multiplatform Mobile (KMM) for input validation, API calls, token handling, and error mapping.
-    - Expose a clean API like `signIn(email: String, password: String): SignInResult` that both platforms call.
-  - The shared module owns the **core sign-in pipeline**:
-    - Input validation (email format, password length/complexity, required fields).
-    - Networking with Ktor (calling the auth endpoint, parsing responses).
-    - Mapping backend responses into domain models (user session, tokens, profile flags).
-    - Interpreting server error codes into domain errors, e.g. `InvalidCredentials`, `AccountLocked`, `MfaRequired`, `NetworkError`, `ServerError`.
-  - For **error handling and consistency**:
-    - Return a sealed result type from the shared module (e.g. `Success(session)` / `Error(reason)`), so Android and iOS share the same error categories while mapping them to platform-specific UI messages.
-    - Log failures in a consistent, privacy-safe way (masked email, region, app version, error type) from the shared layer to help debug cross-platform issues.
-    - Add unit tests in the KMM module that cover happy path, invalid input, network errors, and edge cases so behavior is identical across platforms.
-  - For **platform-specific concerns**, use `expect` / `actual`:
-    - Things like secure token storage, biometrics, and push notification registration stay platform-specific but are accessed through expected interfaces defined in KMM.
-    - The shared auth logic calls those abstractions, so the business flow stays shared while implementations differ per platform.
-  - If KMM/shared code isn’t an option:
-    - I’d push as much of the sign-in logic as possible into a **backend service** (validation rules, error codes) and keep mobile thin.
-    - At minimum, maintain a **shared spec** for auth behavior and error contracts, and add automated tests so Android and iOS stay aligned.
-
-3. How do you test the domain and repository layers in an Android app to ensure high code coverage and proper handling of Kotlin coroutines or Flow? 
-   - **Testing domain and repositories**:
-     - Use **JUnit** for unit tests with **MockK/Mockito** to mock data sources (API, DB, cache).
-     - Keep these tests JVM-only (no Android dependencies) so they’re fast and run in CI on every push.
-   - **Coroutines**:
-     - Use `kotlinx-coroutines-test` (`runTest`, `StandardTestDispatcher`) to control virtual time.
-     - Inject a `CoroutineDispatcher` into use cases/repositories so tests can pass a `TestDispatcher` and avoid relying on `Dispatchers.IO/Main`.
-     - Verify proper cancellation and error propagation by simulating failures in mocked data sources.
-   - **Flow**:
-     - Use the **Turbine** library (`flow.test { ... }`) to assert emissions:
-       - Check the sequence: `Loading` → `Success` or `Loading` → `Error`.
-       - Verify that certain actions (e.g., refresh) trigger new emissions, but no unintended duplicates.
-         - Duplicates can happen if the repository re-emits the same state on every call, or if the ViewModel maps streams in a way that causes redundant emissions. I usually assert that making the same call twice without data changes does **not** produce extra `Success` states, or that UI transformations use `distinctUntilChanged`-style behavior where appropriate.
-     - Test edge cases: empty lists, errors, retries, and backpressure where relevant.
-       - **Backpressure** in Flows means controlling how producers behave when consumers are slow. For `Flow`, this shows up with operators like `buffer`, `conflate`, and `debounce`. In tests, I simulate slow collectors (e.g., with `delay` in the test) and assert that, with `conflate`, only the latest value is delivered, or with `buffer`, upstream isn’t blocked.
-       - Common **retry** mechanisms in Flows include `retry`, `retryWhen`, or wrapping the flow in a use case that re-subscribes on failure. In tests, I mock the data source to fail the first N times, then succeed, and assert that:
-         - The flow retries the expected number of times.
-         - The final emission is `Success` or `Error` according to the policy.
-   - Overall, I aim for tests that validate **both happy-path and failure-path behavior** so that concurrency, retries, and error mapping are all covered.
-   - **Libraries**:
-     - `kotlinx-coroutines-test` and Turbine are **separate libraries**:
-       - `kotlinx-coroutines-test` is the **official** way from the Kotlin coroutines library to test suspending code and coroutine scheduling.
-       - Turbine (from CashApp) is a popular, lightweight library to test `Flow` emissions ergonomically.
-     - Alternatives for Flow testing:
-       - Manual collection into a list (`toList()`) and asserting on the list.
-       - Custom test collectors or using regular JUnit assertions inside `launch` blocks, but Turbine tends to be much cleaner.
-
-4. Can you describe a time when you encountered a non-crashing but impactful bug in production, and how you approached trade-offs between speed and maintainability in fixing it? 
-    - In production, some Neiman Marcus users reported that valid promo codes were showing as “not applicable” at checkout. The app never crashed, but it clearly affected conversion and customer trust.
-    - It was hard to reproduce: it only happened for certain combinations of **region, currency, and promo rules**.
-    - **Investigation**:
-      - I worked with analytics and logging to slice the data by promo code, country, currency, and cart composition.
-      - We discovered a pattern: the issue correlated with a new backend field that had been added to promo responses.
-        - Concretely, the backend started sending a new field (for example, a `promoScope` or `eligibilityReason` flag). Our client mapper didn’t recognize it, so the discount logic fell back to a conservative branch meant for “unknown promo types,” which rejected some legitimate promos instead of treating the new flag as compatible.
-      - On the client side, our discount logic was falling back to a conservative path whenever that field was unrecognized, which effectively rejected some valid promos.
-    - **Short-term fix (speed)**:
-      - Implemented a **targeted fix** in the existing promo calculation class, behind a feature flag.
-        - The feature flag wasn’t per-user; it allowed us to **toggle the new interpretation logic on/off** quickly. We could enable it for all users once we were confident, and disable it if we saw unexpected behavior in specific regions or promo campaigns.
-      - Updated the mapping layer to correctly interpret the new field while keeping the previous behavior as a fallback.
-        - The mapping layer here is the code that converts **raw API response models** into **domain models** the promotion engine understands. Fixing it meant updating that conversion so new backend fields mapped to the correct domain enums/flags instead of falling into “unknown.”
-      - Paired with QA to create **focused regression tests** around checkout flows using high‑value promos, and monitored metrics closely after rollout.
-    - **Long-term improvement (maintainability)**:
-      - Once the immediate issue was stable, I refactored the discount logic into a dedicated `PromotionEngine` with:
-        - Clear separation between raw API models and domain models.
-        - Unit tests that covered combinations of currency, region, and promo types.
-      - We also **documented the incident** and added observability (structured logs & dashboards) for promo failures and fallback paths, so future changes in backend fields would surface faster.
-        - By observability I mean better **logging, metrics, and dashboards**. On Android we logged structured events (promo ID, masked user ID, region, error code) via our analytics/observability stack (e.g., Firebase Analytics/Crashlytics, Datadog/New Relic, or a custom logging pipeline). On the backend, those signals were aggregated into dashboards so product/engineering could quickly spot spikes in promo failures.
-    - This approach balanced **speed to protect revenue** with a **follow-up refactor** that made the system more robust and easier to evolve.
-
-5. How do you ensure scalability, maintainability, and faster release cycles in large Android projects? 
-    - **Modular architecture**:
-      - Split the app into **feature-based Gradle modules** (e.g., `feature-cart`, `feature-profile`, `feature-search`) plus shared core modules.
-      - This speeds up builds, enforces boundaries, and allows teams to work more independently.
-    - **Clean architecture / MVVM**:
-      - Use a layered approach (UI → ViewModel → UseCases/Repositories → Data sources) so business logic is testable and not tied to the UI framework.
-      - Rely on unidirectional data flow (e.g., StateFlow) for predictable state management.
-    - **CI/CD pipelines**:
-      - Configure CI to run unit tests, lint, and instrumentation tests (or a **smoke suite**) on every PR.
-        - A smoke suite is a **small set of high-value tests** (end-to-end or integration) that exercise the most critical flows—like login, basic navigation, and a simple checkout—so you quickly know if a build is fundamentally broken without running the entire test matrix every time.
-      - Use track-based Play Store releases (internal, alpha, beta, production) with staged rollouts to reduce blast radius.
-    - **Code quality practices**:
-      - Enforce code reviews, static analysis (Detekt, ktlint), and shared coding standards.
-      - Encourage small, focused PRs and good documentation of modules and contracts.
-    - **Feature flags and configuration**:
-      - Use feature flags/remote config so new features can be tested and gradually rolled out without blocking releases.
-
-6. Can you describe a time when you had to take a deliberate technical shortcut in an Android project? How did you manage the risks? 
-   - On one project we had a **new API endpoint** that marketing wanted to surface quickly for a limited-time campaign (e.g., a curated holiday collection in the Neiman Marcus app).
-   - Given the tight deadline, we made a conscious decision to **ship a minimal implementation first**:
-     - Version 1 had the core happy path only: fetch data from the new endpoint and display it.
-     - We deferred full offline support, detailed error states, analytics fine-tuning, and some refactoring that we knew would be ideal.
-   - To manage the risks:
-     - I clearly **communicated the trade-offs** to product and stakeholders: what we were shipping now, what was intentionally missing, and what the user impact would be if the API failed.
-     - We **documented the gaps** as explicit tech debt tickets (e.g., improved retry/backoff, offline caching, richer error UX).
-     - Put the new feature behind a **feature flag**, so we could quickly disable it if the endpoint misbehaved without a full app release.
-   - After the campaign:
-     - We scheduled time to **harden the feature**: add proper error handling, offline/cache behavior, and analytics, and clean up any shortcuts in the implementation.
-     - We also looked at what parts of the solution (network layer, UI components) could be **reused** for future seasonal campaigns or similar promo integrations.
-   - This showed we could move fast when needed, but in a controlled way, and then come back to invest in maintainability once the immediate business goal was met.
-
-7. How do you structure your Android app to make data sources easily swappable and testable? 
-   - I use the **Repository pattern** to abstract data access away from the UI:
-     - Define interfaces like `BillsRepository`, `UserRepository`, etc. that expose use-case-friendly methods.
-     - Under the hood, repositories coordinate **data sources**: `ApiDataSource`, `CacheDataSource`, `DatabaseDataSource`, etc.
-   - **Dependency Injection (Hilt/Dagger)**:
-     - Use DI to provide concrete implementations at runtime and allow tests to inject fakes or mocks.
-     - For example, in production provide `ApiBillsDataSource`, in tests provide an in-memory fake.
-   - **Composition over inheritance**:
-     - The repository composes multiple data sources and decides when to read/write from each.
-     - This makes swapping a data source (e.g., moving from Room to DataStore for certain data) largely a wiring change.
-   - **Testing**:
-     - In unit tests, I mock or fake the data sources and assert that the repository correctly handles success/failure, caching logic, and ordering of calls.
-       - Here “fake” can mean two things: either **test doubles** that implement the same interface but return in-memory data, or using a mocking framework (MockK/Mockito) to stub responses. I like using simple in-memory fakes for positive paths and mocks for more complex interaction verification.
-
-8. Implement a testable repository in Android to fetch upcoming bills, allowing easy swapping of data sources like API or cache.  
-   - I’d separate the concerns a bit more clearly so that **data sources** and **repository** are distinct:
-```kotlin
-interface BillsDataSource {
-    suspend fun getUpcomingBills(): List<Bill>
-}
-
-class ApiBillsDataSource(private val apiService: ApiService) : BillsDataSource {
-    override suspend fun getUpcomingBills(): List<Bill> {
-        return apiService.fetchUpcomingBills()
-    }
-}
-
-class CacheBillsDataSource(private val cache: BillsCache) : BillsDataSource {
-    override suspend fun getUpcomingBills(): List<Bill> {
-        return cache.getCachedBills()
-    }
-}
-
-class BillsRepositoryImpl(
-    private val apiDataSource: BillsDataSource,
-    private val cacheDataSource: BillsDataSource,
-    private val cache: BillsCache,
-) : BillsRepository {
-
-    override suspend fun getUpcomingBills(): List<Bill> {
-        val cachedBills = cacheDataSource.getUpcomingBills()
-        if (cachedBills.isNotEmpty()) {
-            return cachedBills
-        }
-
-        val apiBills = apiDataSource.getUpcomingBills()
-        if (apiBills.isNotEmpty()) {
-            cache.saveBills(apiBills)
-        }
-        return apiBills
-    }
-}
-```
-   - This design:
-     - Keeps `BillsRepository` as the abstraction the rest of the app uses.
-     - Makes each data source testable in isolation.
-     - Allows tests to easily swap in a fake API or fake cache implementation.
-
-9. How would you represent a loading state in Android when no additional data (like message or progress) is needed? 
-   - I usually model UI state with a **sealed class** so states are explicit and exhaustively handled:
-```kotlin
-sealed class BillsUiState {
-    object Loading : BillsUiState() // object = single instance, no payload
-    data class Success(val bills: List<Bill>) : BillsUiState()
-    data class Error(val message: String) : BillsUiState()
-}
-```
-   - `Loading` is an `object` because:
-     - It doesn’t carry extra data.
-     - It represents a single, shared state, so a singleton is appropriate.
-   - In Kotlin there is also a `data object` (since Kotlin 1.9), which is like an object but participates in generated functions; for this simple loading case, a plain `object` is sufficient.
-   - In Compose or XML, I switch on this sealed class to render the correct UI for each state.
-
-10. How can you structure shared business logic in Android so that multiple ViewModels can access it efficiently using StateFlow?  
-11. How can shared business logic be implemented using StateFlow so it can be reused across multiple ViewModels?
-   - The idea is to put **shared business logic and state** in a **separate class** (use case/manager), not in a particular ViewModel:
-     - For example, a `SessionManager`, `CartManager`, or `VehicleSelectionManager`.
-   - That class owns a **`MutableStateFlow`** internally and exposes a read-only `StateFlow`:
-```kotlin
-class SessionManager @Inject constructor() {
-    private val _sessionState = MutableStateFlow<SessionState>(SessionState.LoggedOut)
-    val sessionState: StateFlow<SessionState> = _sessionState
-
-    suspend fun login(/* params */) {
-        // update _sessionState based on result
-    }
-
-    fun logout() {
-        _sessionState.value = SessionState.LoggedOut
-    }
-}
-```
-   - Multiple ViewModels **inject the same instance** (via Hilt/Dagger) and collect from `sessionState`:
-```kotlin
-@HiltViewModel
-class HomeViewModel @Inject constructor(
-    private val sessionManager: SessionManager
-) : ViewModel() {
-    val sessionState: StateFlow<SessionState> = sessionManager.sessionState
-}
-
-@HiltViewModel
-class ProfileViewModel @Inject constructor(
-    private val sessionManager: SessionManager
-) : ViewModel() {
-    val sessionState: StateFlow<SessionState> = sessionManager.sessionState
-}
-```
-   - With Hilt, you typically provide `SessionManager` as a singleton in a module:
-```kotlin
-@Module
-@InstallIn(SingletonComponent::class)
-object SessionModule {
-
-    @Provides
-    @Singleton
-    fun provideSessionManager(): SessionManager = SessionManager()
-}
-```
-   - Yes, the **UseCase/Manager holds the `MutableStateFlow` and exposes `StateFlow`**.
-   - ViewModels usually **do not each have their own copies** of that shared state; they just collect or map the shared `StateFlow` into their own UI state.
-   - This avoids duplication of business logic and ensures all ViewModels see the same source of truth.
-
-12. How can you use Hilt to provide a singleton repository instance that can be injected into multiple ViewModels in an Android app? 
-    - Define the repository implementation and mark it as injectable:
-```kotlin
-@Singleton
-class BillsRepositoryImpl @Inject constructor(
-    private val apiDataSource: ApiBillsDataSource,
-    private val cacheDataSource: CacheBillsDataSource
-) : BillsRepository {
-    // ...implementation...
-}
-```
-    - Create a Hilt module that tells Hilt how to bind the implementation to the interface:
-```kotlin
-@Module
-@InstallIn(SingletonComponent::class)
-abstract class RepositoryModule {
-
-    @Binds
-    @Singleton
-    abstract fun bindBillsRepository(
-        impl: BillsRepositoryImpl
-    ): BillsRepository
-}
-```
-    - Inject the repository into ViewModels using `@HiltViewModel` and constructor injection:
-```kotlin
-@HiltViewModel
-class BillsViewModel @Inject constructor(
-    private val billsRepository: BillsRepository
-) : ViewModel() {
-    // use billsRepository here
-}
-```
-    - Hilt ensures there is **one singleton instance** of `BillsRepositoryImpl` in the `SingletonComponent`, and all ViewModels that depend on `BillsRepository` get that same instance.
-
-### Time where you had to collab with a designer or a PM
-What they want:
-- Can you communicate well with non-engineers?
-- Do you push back respectfully and negotiate scope/UX/technical constraints?
-- Do you think in terms of user impact and business goals, not just code?
-
-ANSWER:
-- Context: “We were redesigning the home page with richer media and personalization.”
-- Collaboration: “Design wanted a different complex animations for each section and PM wanted it live before a seasonal campaign.”
-  - horizontal pager with parallax images
-    - Parallax images are images that move at a different speed than the foreground content as the user scrolls or swipes, creating a depth effect (background moves more slowly than the foreground). In our case, product images in the background scroll slightly offset from the cards/text to give a premium, layered feel.
-- What you did: “I walked them through performance constraints on low-end devices and proposed picking 2 animations for reusability and a phased rollout. I also suggested we reuse existing components to hit the date.”
-- Result: “We shipped on time, hit the campaign window, and the experience still felt premium without blowing up engineering effort.”
-
-### How did you deal with maintainability?
-What they want:
-- Do you design/code so others can work on it easily later?
-- Can you explain concrete practices, not just “we follow clean code”?
-- Do you think about refactoring, modularization, tests, and reducing tech debt?
-  - tech debt is any code that is not maintainable or scalable in the long term
-    - some decisions are made to hit deadlines but need to be revisited later so we tag them as tech debt
-    - examples: duplicated code, lack of tests, poor architecture, lack of documentation, etc.
-
-NOTES:
-- modularization (CLEAN)
-  - built modules around features (auth, product listing, cart, checkout)
-  - faster build times, clearer ownership boundaries, easier testing
-  - have debated breaking product listing into smaller modules (search, filters, recommendations) but held off for now due to overlap
-- separation of concerns (MVVM, repository pattern)
-  - Repository pattern -> hides if data comes from network or local db (cache). One source of truth for data.
-  - use cases -> verbs (GetProducts, AddToCart, etc.) that orchestrate repositories and business logic. Rules live here (pricing, inventory checks, eligibility, retries analytics hooks, etc.)
-- shared composable functions and themes
-  - shared card component for product listing
-  - shared button and dropdown components
-  - catalog of shared horizontal pager component with different parallax effects we can plug and play with
-- documentation
-  - reasoning for architecture decisions
-  - how to add new features or components
-- CI
-  - static analysis with detekt/ktlint
-  - unit tests for ViewModels and repositories
-  - UI tests for critical flows with Espresso
-
-ANSWER:
-    I’ve treated maintainability as a combination of architecture, reuse, and guardrails, not just ‘clean code’.
-Architecturally, we broke the app into a few feature‑based modules—auth, product listing, cart, checkout—rather than a single monolith. That gave us clearer ownership and faster incremental builds without overwhelming the team with dozens of tiny modules. Each feature used a consistent MVVM + use case + repository structure: ViewModels handle UI state, use cases encode business rules like GetProductList or PlaceOrder, and repositories hide whether data comes from network, cache, or local DB. That separation made it easy to change backends or data sources without touching the UI.
-To keep the UI maintainable, we invested in shared composable components and theming: a single product card, shared button and dropdown components, and a reusable horizontal pager with pluggable parallax effects. That reduced duplicated UI logic and kept design changes localized.
-From a process perspective, we enforced standards with CI: Detekt/ktlint for style and smells, unit tests around ViewModels and repositories, and Espresso tests for critical flows like login and checkout. We treated tech debt explicitly—legacy god classes, duplicated networking code, and inconsistent UI components were tracked in the backlog and refactored incrementally as we touched those areas.
-As a lead, my focus was to make sure new work fit these patterns, that modules stayed loosely coupled, and that we always had enough tests and automation in place so other engineers could safely extend the app without fear of breaking core flows.”
-
-### Example of a short cut you took when you were under a time crunch
-What they want:
-- You are honest about tradeoffs and not dogmatic.
-- You know when to cut corners and how to contain the risk.
-- You always think in terms of: impact, risk, and follow-up cleanup.
-
-Intentional shortcuts:
-- Duplicating a small piece of code instead of over-abstracting to hit a deadline.
-- Shipping without full test coverage but adding smoke tests for the critical path.
-- Implementing a simpler UX variant for v1, planning v2 once metrics are validated.
-
-ANSWER:
-- Context: “We had to add a new promo banner flow before Black Friday, but the ideal solution required refactoring the navigation stack.”
-- Shortcut: “To hit the date, I added a small, isolated navigation path and repeated some logic instead of refactoring everything.”
-- Risk management: “I wrapped it behind a feature flag, added basic UI tests, and documented it as tech debt in our backlog.”
-- Follow-up: “After the sale, we refactored the navigation properly and removed the duplication. The short-term hack let us capture the revenue opportunity without destabilizing the rest of the app.”
-
-
-When have you had a disagreement with a peer about a technical approach? How did you resolve it?
-- aquisition by Sax Global
-- at Ally Bank I owned a feature that I started writing in
-
----
-
-Live coding
-1. android with payment dates with an api
-2. design how you would fetch the data from the api
-
----
-
-Follow up questions for regarding the live coding
-1. Why is  "Loading" an object when it comes to a sealed class
-   - In a sealed class hierarchy that models UI state (e.g., `Success`, `Error`, `Loading`), we often make `Loading` an `object` because it has **no data** and there is only one logical instance of it. Using an `object` avoids unnecessary allocations and makes intent clear: `Loading` is just a marker state, not a value that changes.
-   - objects are singletons in Kotlin, so we don’t need multiple instances of `Loading`. It also simplifies equality checks since all references to `Loading` point to the same instance.
-2. Api how would you make that available to multiple view models
-   - use repository pattern and DI with Hilt
-   - The interviewer is looking for separation of concerns and DI: define a single `Repository` (or API service) interface, provide a singleton instance via Hilt, and inject it into any ViewModel that needs it. That way, multiple ViewModels share the same API client/repository instead of each creating its own, and you can easily mock it in tests.
-   -
-3. How would we use hilt
-   - In addition to explaining `@Inject`, `@Module`, `@Provides`, and `@Singleton`, mention the big picture:
-   - TODO: I imagine this is more than explaining @Inject, @Module, @Provides, @Singleton, etc., what else should I cover?
 
 
 ## Questions I want to Ask
@@ -869,16 +922,11 @@ Experience in full software development life cycle (SDLC) including:
 
 ## Preparation Topics:
 - Neiman - KMM (Kotlin Multiplatform Mobile), Ktor, Koin,
-  - challenge with KMM - did i use compose multiplatform? no
+  - challenge with KMM
   - which modules are KMM? STRINGS, COLORS, DIMENS (font sizes, paddings, margins, etc.),
 - Honda - BLE, AAOP (Android Automotive Open Project),
 - Zoom - RN bridging concepts, native modules,
 - Gradle - Flavors vs Variants add to BuildTypes in gradle
-  - flags for different build types -> can enable/disable logging, crash reporting, payments, etc.
-  - Flavors are prod, uat, dev
-    - uat - are where dev and prod endpoints are combined
-      - use for testing features before pushing to prod
-  - Variants are debug, release
 
 
 ---

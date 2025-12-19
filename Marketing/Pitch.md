@@ -5,6 +5,10 @@ Background:
 
 Current Address:
 750 Fort Worth Avenue • Dallas TX 75208
+Phone:
+(214) 329-1138
+Email:
+richardchristianwilkerson@gmail.com
 
 # Pitch
 
