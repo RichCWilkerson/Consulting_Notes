@@ -1610,3 +1610,35 @@ val result = callSupplier { "Hello, World!" }
 val result: Int = callSupplier { 42 }
 val user: User = callSupplier { loadUserFromDb() }
 ```
+
+## what is a sealed class?
+Sealed class - type safety 
+- type safety - compiler can check all possible cases at compile time
+- exhaustive when statements - compiler forces you to handle all cases
+- restricted class hierarchy - all subclasses must be defined in the same file
+- can have properties and methods
+- can be abstract or have implementations
+
+## What is the difference between an object and a data class in Kotlin?
+object for stateless singleton
+data class for stateful data holder
+
+## how do you handle null from an api?
+defensive mapping - defaults in your data layer to avoid nulls from the api
+- retry policy - exponential backoff with jitter
+- placeholder data - show loading state in ui
+
+## launch vs async
+- async will use retry policies if needed while launch has to be handled manually
+
+
+## Tools:
+•    Layout Inspector
+•    Recomposition Highlighter - visualize recompositions in Compose
+•    Perfetto - system-wide tracing tool for performance analysis
+
+## Database Migrations:
+•    Backward-compatible migrations
+•    Additive changes first
+•    Background migrations
+•    Avoid blocking main thread

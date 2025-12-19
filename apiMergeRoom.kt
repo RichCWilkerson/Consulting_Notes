@@ -351,11 +351,99 @@ fun longestConsecNumbers(numberList: List<Int>): Int {
 }
 
 
+// -----------------
+/*
+You are given a string that may contain:
+
+Letters (a–z, A–Z)
+
+Digits (0–9)
+
+Special characters (!@#$%^&*)
+
+Multiple spaces
+
+Your task
+
+Reverse only alphabetic characters (a–z, A–Z) inside each word
+
+Do NOT move digits or special characters
+
+Preserve all spaces exactly as they appear
+
+Words are separated by spaces
+"a1b-c  De!f2" - input
+"b1a-c  fe!D2"- output
+ */
 
 
+fun reverseCharsInWord(sent: String): String {
 
+    // start adding chars to a map<char, index>
+    // spaces stop this
+    // add special chars to map with current index
+    // add word to final return string (concat)
 
+    // final string
+    var returnString: String = ""
 
+    //  index
+    val specialChars = mutableMapOf<Int, Char>()
+
+    // letters should be a stack ->
+    val letters = mutableListOf<Char>() // i dont think i need this...
+
+    // Is length “number of characters seen in this word so far”?
+    // Or “last index of this word (0-based)”?
+    var length = -1
+
+    // need to handle last word when a space does not trigger. so an or based on index?
+    sent.forEachIndexed { index, char ->
+        if (char.isLetter()) {
+            letters.add(char)
+            length++
+        } else if (char == ' ') {
+            // handle reversing the word
+            var newWord: String = "" // i don't need to clear this once it leaves scope? or does it need to be inside the while...
+
+            while (length >= 0) {
+                // if the map contains that index -> add the value for the char (symbol/num)
+                if (specialChars.contains(length)) {
+                    newWord = newWord + currentWord[length] // add the char at that position
+                } else {
+                    newWord = newWord + letters.removeLast() // get the last added or top of the stack of letters
+                }
+                length--
+            }
+
+            // this correctly handles a double space - newWord will be ""
+            returnString = returnString + newWord + " "
+            specialChars.clear() // need to set it to null?
+            letters.clear() // set letters to null
+        } else {
+            // this should be any other special chars and numbers
+            specialChars.put(index) = char
+            length++
+        }
+    }
+    // handle the last word here?
+    if (!letters.isEmpty()) {
+        // handle reversing the word
+        vav newWord: String = "" // i don't need to clear this once it leaves scope? or does it need to be inside the while...
+
+        while (length >= 0) {
+            // if the map contains that index -> add the value for the char (symbol/num)
+            if (specialChars.contains(length)) {
+                newWord = newWord + "" // add the char at that position
+            } else {
+                newWord = newWord + letters.removeLast() // get the last added or top of the stack of letters
+            }
+            length--
+        }
+
+        returnString = returnString + newWord + " "
+    }
+}
 
 
 

@@ -17,6 +17,30 @@ http://s3-storage-explorer.s3-website.ap-south-1.amazonaws.com/?video=Android%2F
 
 http://s3-storage-explorer.s3-website.ap-south-1.amazonaws.com/?video=Android%2FInterviews%2F2025-11-11_R1_Jack_Amazon.mkv&bucket=storage-solution
 
+## Pitch:
+Hi, my name is Christian like the religion, and I’m currently a Lead Android Developer at Neiman Marcus with over 13 years of experience in mobile application development across industries like FINANCE, LUXURY RETAIL, AUTOMOTIVE, and TRAVEL.
+
+At Neiman Marcus, I was brought in to modernize and scale the app.
+I:
+- Re‑architected the app into Clean MVVM Architecture with feature‑based Gradle modules, which sped up builds and made releases more predictable.
+- Led the move to Jetpack Compose, starting with a hybrid XML+Compose approach and then fully composing new features, which cut UI development time and improved design parity with Figma.
+- Improved performance and stability by profiling with Android Studio and Firebase, then introducing lazy loading, Coil for images, and better background initialization.
+- Hardened security with SSL pinning, token-based auth, and biometrics, and set up CI with GitHub Actions for automated testing.
+- led and developed a KMM module for sign-up and login as a PoC to evaluate cross-platform code sharing for iOS and Android.
+
+Before that, at Ally Bank, I worked on the "One Ally" ecosystem, bringing banking, auto, investing, and mortgage into a single app.
+There I:
+- Implemented secure login and authentication flows combining biometrics with MFA, ensuring compliance with PCI-DSS, FDIC, GFCR, and CFPB.
+- Built modular, Kotlin-based features for snapshot, fund transfer, and bill pay using MVVM, Coroutines, Retrofit, and Room with Jetpack Compose.
+- Also developed the mobile check deposit feature using CameraX, image processing, and secure upload.
+
+I really enjoy collaborating with other engineers to build useful and engaging mobile experiences that solve real user problems.
+As my current project wraps up, I’m now looking for my next challenge, and I believe [Client/Company Name]
+would be a fantastic place to continue growing my career and contribute.
+
+
+
+
 
 ## Role:
 Kuiper belt (ice astroids surrounding our solar system)
@@ -262,7 +286,35 @@ R8/Proguard expertise
     - `LaunchedEffect` to run suspend functions when certain keys change -> useful for one-time operations like fetching data or animations
 
 - what are lifecycles of activities?
-  - onCreate, onStart, onResume, onPause, onStop, onRestart, onDestroy, 
+  - onCreate()
+    - Called once when the Activity is first created.
+    - Inflate the layout, initialize UI/view binding, set up ViewModels, DI, and one-time configuration.
+    - Do not start heavy work here on the main thread; offload long operations.
+  - onStart()
+    - Activity becomes visible but not yet in the foreground.
+    - Register UI-visible resources: start observing data that affects UI, register broadcast receivers/listeners needed while visible.
+    - Lightweight work only; user still can’t interact.
+  - onResume()
+    - Activity is now in the foreground and the user can interact.
+    - Start anything that should run only while the Activity is in focus: animations, camera preview, location updates, sensors, etc.
+    - This is where you ensure UI is in its final interactive state.
+  - onPause()
+    - Another Activity partially obscures this one; it’s losing focus but might still be visible.
+    - Commit lightweight, immediate state (e.g., current text, scroll position), pause animations, stop things that must not run without focus (e.g., camera, video recording).
+    - Keep it fast; onPause() must complete quickly because the next Activity’s onResume() waits for it.
+  - onStop()
+    - Activity is no longer visible to the user.
+    - Release or detach more expensive resources: unregister receivers, stop location updates, pause ongoing work that only makes sense when visible.
+    - Persist deeper state if needed (e.g., draft form, last screen) to survive process death.
+  - onRestart()
+    - Called when an Activity is coming back to the foreground after onStop().
+    - Use it for simple re-initialization or logging; most of your “resume UI” logic stays in onStart() / onResume().
+    - Many apps leave this empty and rely on onStart()/onResume().
+    - jumps to onStart() next.
+  - onDestroy()
+    - Final callback before the Activity is destroyed (user finishes it or system kills it).
+    - Clean up remaining resources not already released: cancel coroutines, dispose observers, clear references to avoid leaks.
+    - Remember: it is not guaranteed to be called if the process is killed; critical state should already be saved earlier (onPause()/onStop()).
 
 - what is setContent in android? Why is it called in onCreate and not in onStart or onResume?
   - setContent is the entry point that attaches a Compose Composition to your Activity (or Fragment/ComposeView) and tells it: “here is the root composable tree.” After that, recomposition is driven purely by state changes, not by calling setContent again.
@@ -350,15 +402,296 @@ fun main() = runBlocking {
 
 ### Daniel
 [NextCloud](https://nextcloud-talk-recordings-itc-eit.s3.amazonaws.com/recordings/interviews/12-12-25-6-00PM-%20R1%20-%20Daniel%20A%20-%20Amazon%23-%231462182%23-%23INTERVIEW%23-%23TC/Recording%202025-12-12%2017-49-14.webm?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAWIHTASZ3FCQNXFGX%2F20251212%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20251212T185301Z&X-Amz-Expires=604800&X-Amz-Signature=361a753053843f415bba3e4b5cda3ac662e8d1b48eec7da04f888459d3870789&X-Amz-SignedHeaders=host)
-
+starts at 18:30
+2nd round with Anna
 
 
 ### Willard
 [NextCloud](https://nextcloud-talk-recordings-itc-eit.s3.amazonaws.com/recordings/interviews/25-11-25-9-00PM-%20R1%20-%20Willard%20C%20-%20Amazon%23-%231459485/Recording%202025-11-25%2020-52-27.webm?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAWIHTASZ3FCQNXFGX%2F20251212%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20251212T160115Z&X-Amz-Expires=604800&X-Amz-Signature=15600e5e6d26b4341386228cfd872ccfb2d747ee358dfa4a47f9d6577e5fc67e&X-Amz-SignedHeaders=host)
-
+starts at 8
+2nd round with Anna
 
 
 ## Final Round Questions:
+
+
+### Mike
+1. How would you test Android app features end-to-end to ensure UI behaves correctly during user interactions, including orientation changes and back navigation? 
+   - I use **instrumentation UI tests** to exercise real user flows:
+     - **Espresso** or the **Compose Testing Library** for in-app UI interactions (clicks, swipes, text input, back navigation).
+     - **UI Automator** when I need to interact outside my app (system dialogs, notifications, permission prompts).
+   - I design tests around **critical user journeys**:
+     - Example: login → browse products → add to cart → checkout.
+     - Assert visibility, content, and state at each step.
+   - For **orientation changes and configuration changes**: 
+     - Most frameworks don’t auto-rotate for you; in practice you **manually rotate** the device/emulator from the test:
+       - Instrumentation tests can call `activityScenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }` or use `UiDevice.setOrientationLeft()` / `setOrientationNatural()`.
+       - In Compose tests, you can similarly adjust orientation via the Activity or use a custom test rule that recreates the Activity to mimic configuration change.
+     - After rotation, I assert that:
+       - State is preserved (e.g., cart contents, scroll position, form fields).
+       - No duplicate network calls or duplicated fragments.
+         - Duplicate fragments can happen if orientation changes trigger Activity/Fragment recreation but the code re-adds a Fragment on `onCreate` **without checking savedInstanceState**. Good tests make sure back navigation and rotation don’t accidentally stack the same Fragment multiple times.
+     - In Compose, I verify that state is coming from `ViewModel`/`rememberSaveable` so recomposition + recreation behaves correctly.
+   - I run these tests as part of CI so that regressions in navigation/back handling or rotation are caught before release.
+
+2. When designing a cross-platform Android app that validates sign-in, how would you ensure consistent business logic and proper error handling?
+  - I’d centralize auth and sign-in rules in a **KMM shared module** so Android and iOS use the same logic:
+    - Use Kotlin Multiplatform Mobile (KMM) for input validation, API calls, token handling, and error mapping.
+    - Expose a clean API like `signIn(email: String, password: String): SignInResult` that both platforms call.
+  - The shared module owns the **core sign-in pipeline**:
+    - Input validation (email format, password length/complexity, required fields).
+    - Networking with Ktor (calling the auth endpoint, parsing responses).
+    - Mapping backend responses into domain models (user session, tokens, profile flags).
+    - Interpreting server error codes into domain errors, e.g. `InvalidCredentials`, `AccountLocked`, `MfaRequired`, `NetworkError`, `ServerError`.
+  - For **error handling and consistency**:
+    - Return a sealed result type from the shared module (e.g. `Success(session)` / `Error(reason)`), so Android and iOS share the same error categories while mapping them to platform-specific UI messages.
+    - Log failures in a consistent, privacy-safe way (masked email, region, app version, error type) from the shared layer to help debug cross-platform issues.
+    - Add unit tests in the KMM module that cover happy path, invalid input, network errors, and edge cases so behavior is identical across platforms.
+  - For **platform-specific concerns**, use `expect` / `actual`:
+    - Things like secure token storage, biometrics, and push notification registration stay platform-specific but are accessed through expected interfaces defined in KMM.
+    - The shared auth logic calls those abstractions, so the business flow stays shared while implementations differ per platform.
+  - If KMM/shared code isn’t an option:
+    - I’d push as much of the sign-in logic as possible into a **backend service** (validation rules, error codes) and keep mobile thin.
+    - At minimum, maintain a **shared spec** for auth behavior and error contracts, and add automated tests so Android and iOS stay aligned.
+
+3. How do you test the domain and repository layers in an Android app to ensure high code coverage and proper handling of Kotlin coroutines or Flow? 
+   - **Testing domain and repositories**:
+     - Use **JUnit** for unit tests with **MockK/Mockito** to mock data sources (API, DB, cache).
+     - Keep these tests JVM-only (no Android dependencies) so they’re fast and run in CI on every push.
+   - **Coroutines**:
+     - Use `kotlinx-coroutines-test` (`runTest`, `StandardTestDispatcher`) to control virtual time.
+     - Inject a `CoroutineDispatcher` into use cases/repositories so tests can pass a `TestDispatcher` and avoid relying on `Dispatchers.IO/Main`.
+     - Verify proper cancellation and error propagation by simulating failures in mocked data sources.
+   - **Flow**:
+     - Use the **Turbine** library (`flow.test { ... }`) to assert emissions:
+       - Check the sequence: `Loading` → `Success` or `Loading` → `Error`.
+       - Verify that certain actions (e.g., refresh) trigger new emissions, but no unintended duplicates.
+         - Duplicates can happen if the repository re-emits the same state on every call, or if the ViewModel maps streams in a way that causes redundant emissions. I usually assert that making the same call twice without data changes does **not** produce extra `Success` states, or that UI transformations use `distinctUntilChanged`-style behavior where appropriate.
+     - Test edge cases: empty lists, errors, retries, and backpressure where relevant.
+       - **Backpressure** in Flows means controlling how producers behave when consumers are slow. For `Flow`, this shows up with operators like `buffer`, `conflate`, and `debounce`. In tests, I simulate slow collectors (e.g., with `delay` in the test) and assert that, with `conflate`, only the latest value is delivered, or with `buffer`, upstream isn’t blocked.
+       - Common **retry** mechanisms in Flows include `retry`, `retryWhen`, or wrapping the flow in a use case that re-subscribes on failure. In tests, I mock the data source to fail the first N times, then succeed, and assert that:
+         - The flow retries the expected number of times.
+         - The final emission is `Success` or `Error` according to the policy.
+   - Overall, I aim for tests that validate **both happy-path and failure-path behavior** so that concurrency, retries, and error mapping are all covered.
+   - **Libraries**:
+     - `kotlinx-coroutines-test` and Turbine are **separate libraries**:
+       - `kotlinx-coroutines-test` is the **official** way from the Kotlin coroutines library to test suspending code and coroutine scheduling.
+       - Turbine (from CashApp) is a popular, lightweight library to test `Flow` emissions ergonomically.
+     - Alternatives for Flow testing:
+       - Manual collection into a list (`toList()`) and asserting on the list.
+       - Custom test collectors or using regular JUnit assertions inside `launch` blocks, but Turbine tends to be much cleaner.
+
+4. Can you describe a time when you encountered a non-crashing but impactful bug in production, and how you approached trade-offs between speed and maintainability in fixing it? 
+    - In production, some Neiman Marcus users reported that valid promo codes were showing as “not applicable” at checkout. The app never crashed, but it clearly affected conversion and customer trust.
+    - It was hard to reproduce: it only happened for certain combinations of **region, currency, and promo rules**.
+    - **Investigation**:
+      - I worked with analytics and logging to slice the data by promo code, country, currency, and cart composition.
+      - We discovered a pattern: the issue correlated with a new backend field that had been added to promo responses.
+        - Concretely, the backend started sending a new field (for example, a `promoScope` or `eligibilityReason` flag). Our client mapper didn’t recognize it, so the discount logic fell back to a conservative branch meant for “unknown promo types,” which rejected some legitimate promos instead of treating the new flag as compatible.
+      - On the client side, our discount logic was falling back to a conservative path whenever that field was unrecognized, which effectively rejected some valid promos.
+    - **Short-term fix (speed)**:
+      - Implemented a **targeted fix** in the existing promo calculation class, behind a feature flag.
+        - The feature flag wasn’t per-user; it allowed us to **toggle the new interpretation logic on/off** quickly. We could enable it for all users once we were confident, and disable it if we saw unexpected behavior in specific regions or promo campaigns.
+      - Updated the mapping layer to correctly interpret the new field while keeping the previous behavior as a fallback.
+        - The mapping layer here is the code that converts **raw API response models** into **domain models** the promotion engine understands. Fixing it meant updating that conversion so new backend fields mapped to the correct domain enums/flags instead of falling into “unknown.”
+      - Paired with QA to create **focused regression tests** around checkout flows using high‑value promos, and monitored metrics closely after rollout.
+    - **Long-term improvement (maintainability)**:
+      - Once the immediate issue was stable, I refactored the discount logic into a dedicated `PromotionEngine` with:
+        - Clear separation between raw API models and domain models.
+        - Unit tests that covered combinations of currency, region, and promo types.
+      - We also **documented the incident** and added observability (structured logs & dashboards) for promo failures and fallback paths, so future changes in backend fields would surface faster.
+        - By observability I mean better **logging, metrics, and dashboards**. On Android we logged structured events (promo ID, masked user ID, region, error code) via our analytics/observability stack (e.g., Firebase Analytics/Crashlytics, Datadog/New Relic, or a custom logging pipeline). On the backend, those signals were aggregated into dashboards so product/engineering could quickly spot spikes in promo failures.
+    - This approach balanced **speed to protect revenue** with a **follow-up refactor** that made the system more robust and easier to evolve.
+
+5. How do you ensure scalability, maintainability, and faster release cycles in large Android projects? 
+    - **Modular architecture**:
+      - Split the app into **feature-based Gradle modules** (e.g., `feature-cart`, `feature-profile`, `feature-search`) plus shared core modules.
+      - This speeds up builds, enforces boundaries, and allows teams to work more independently.
+    - **Clean architecture / MVVM**:
+      - Use a layered approach (UI → ViewModel → UseCases/Repositories → Data sources) so business logic is testable and not tied to the UI framework.
+      - Rely on unidirectional data flow (e.g., StateFlow) for predictable state management.
+    - **CI/CD pipelines**:
+      - Configure CI to run unit tests, lint, and instrumentation tests (or a **smoke suite**) on every PR.
+        - A smoke suite is a **small set of high-value tests** (end-to-end or integration) that exercise the most critical flows—like login, basic navigation, and a simple checkout—so you quickly know if a build is fundamentally broken without running the entire test matrix every time.
+      - Use track-based Play Store releases (internal, alpha, beta, production) with staged rollouts to reduce blast radius.
+    - **Code quality practices**:
+      - Enforce code reviews, static analysis (Detekt, ktlint), and shared coding standards.
+      - Encourage small, focused PRs and good documentation of modules and contracts.
+    - **Feature flags and configuration**:
+      - Use feature flags/remote config so new features can be tested and gradually rolled out without blocking releases.
+
+6. Can you describe a time when you had to take a deliberate technical shortcut in an Android project? How did you manage the risks? 
+   - On one project we had a **new API endpoint** that marketing wanted to surface quickly for a limited-time campaign (e.g., a curated holiday collection in the Neiman Marcus app).
+   - Given the tight deadline, we made a conscious decision to **ship a minimal implementation first**:
+     - Version 1 had the core happy path only: fetch data from the new endpoint and display it.
+     - We deferred full offline support, detailed error states, analytics fine-tuning, and some refactoring that we knew would be ideal.
+   - To manage the risks:
+     - I clearly **communicated the trade-offs** to product and stakeholders: what we were shipping now, what was intentionally missing, and what the user impact would be if the API failed.
+     - We **documented the gaps** as explicit tech debt tickets (e.g., improved retry/backoff, offline caching, richer error UX).
+     - Put the new feature behind a **feature flag**, so we could quickly disable it if the endpoint misbehaved without a full app release.
+   - After the campaign:
+     - We scheduled time to **harden the feature**: add proper error handling, offline/cache behavior, and analytics, and clean up any shortcuts in the implementation.
+     - We also looked at what parts of the solution (network layer, UI components) could be **reused** for future seasonal campaigns or similar promo integrations.
+   - This showed we could move fast when needed, but in a controlled way, and then come back to invest in maintainability once the immediate business goal was met.
+
+7. How do you structure your Android app to make data sources easily swappable and testable? 
+   - I use the **Repository pattern** to abstract data access away from the UI:
+     - Define interfaces like `BillsRepository`, `UserRepository`, etc. that expose use-case-friendly methods.
+     - Under the hood, repositories coordinate **data sources**: `ApiDataSource`, `CacheDataSource`, `DatabaseDataSource`, etc.
+   - **Dependency Injection (Hilt/Dagger)**:
+     - Use DI to provide concrete implementations at runtime and allow tests to inject fakes or mocks.
+     - For example, in production provide `ApiBillsDataSource`, in tests provide an in-memory fake.
+   - **Composition over inheritance**:
+     - The repository composes multiple data sources and decides when to read/write from each.
+     - This makes swapping a data source (e.g., moving from Room to DataStore for certain data) largely a wiring change.
+   - **Testing**:
+     - In unit tests, I mock or fake the data sources and assert that the repository correctly handles success/failure, caching logic, and ordering of calls.
+       - Here “fake” can mean two things: either **test doubles** that implement the same interface but return in-memory data, or using a mocking framework (MockK/Mockito) to stub responses. I like using simple in-memory fakes for positive paths and mocks for more complex interaction verification.
+
+8. Implement a testable repository in Android to fetch upcoming bills, allowing easy swapping of data sources like API or cache.  
+   - I’d separate the concerns a bit more clearly so that **data sources** and **repository** are distinct:
+```kotlin
+interface BillsDataSource {
+    suspend fun getUpcomingBills(): List<Bill>
+}
+
+class ApiBillsDataSource(private val apiService: ApiService) : BillsDataSource {
+    override suspend fun getUpcomingBills(): List<Bill> {
+        return apiService.fetchUpcomingBills()
+    }
+}
+
+class CacheBillsDataSource(private val cache: BillsCache) : BillsDataSource {
+    override suspend fun getUpcomingBills(): List<Bill> {
+        return cache.getCachedBills()
+    }
+}
+
+class BillsRepositoryImpl(
+    private val apiDataSource: BillsDataSource,
+    private val cacheDataSource: BillsDataSource,
+    private val cache: BillsCache,
+) : BillsRepository {
+
+    override suspend fun getUpcomingBills(): List<Bill> {
+        val cachedBills = cacheDataSource.getUpcomingBills()
+        if (cachedBills.isNotEmpty()) {
+            return cachedBills
+        }
+
+        val apiBills = apiDataSource.getUpcomingBills()
+        if (apiBills.isNotEmpty()) {
+            cache.saveBills(apiBills)
+        }
+        return apiBills
+    }
+}
+```
+   - This design:
+     - Keeps `BillsRepository` as the abstraction the rest of the app uses.
+     - Makes each data source testable in isolation.
+     - Allows tests to easily swap in a fake API or fake cache implementation.
+
+9. How would you represent a loading state in Android when no additional data (like message or progress) is needed? 
+   - I usually model UI state with a **sealed class** so states are explicit and exhaustively handled:
+```kotlin
+sealed class BillsUiState {
+    object Loading : BillsUiState() // object = single instance, no payload
+    data class Success(val bills: List<Bill>) : BillsUiState()
+    data class Error(val message: String) : BillsUiState()
+}
+```
+   - `Loading` is an `object` because:
+     - It doesn’t carry extra data.
+     - It represents a single, shared state, so a singleton is appropriate.
+   - In Kotlin there is also a `data object` (since Kotlin 1.9), which is like an object but participates in generated functions; for this simple loading case, a plain `object` is sufficient.
+   - In Compose or XML, I switch on this sealed class to render the correct UI for each state.
+
+10. How can you structure shared business logic in Android so that multiple ViewModels can access it efficiently using StateFlow?  
+11. How can shared business logic be implemented using StateFlow so it can be reused across multiple ViewModels?
+   - The idea is to put **shared business logic and state** in a **separate class** (use case/manager), not in a particular ViewModel:
+     - For example, a `SessionManager`, `CartManager`, or `VehicleSelectionManager`.
+   - That class owns a **`MutableStateFlow`** internally and exposes a read-only `StateFlow`:
+```kotlin
+class SessionManager @Inject constructor() {
+    private val _sessionState = MutableStateFlow<SessionState>(SessionState.LoggedOut)
+    val sessionState: StateFlow<SessionState> = _sessionState
+
+    suspend fun login(/* params */) {
+        // update _sessionState based on result
+    }
+
+    fun logout() {
+        _sessionState.value = SessionState.LoggedOut
+    }
+}
+```
+   - Multiple ViewModels **inject the same instance** (via Hilt/Dagger) and collect from `sessionState`:
+```kotlin
+@HiltViewModel
+class HomeViewModel @Inject constructor(
+    private val sessionManager: SessionManager
+) : ViewModel() {
+    val sessionState: StateFlow<SessionState> = sessionManager.sessionState
+}
+
+@HiltViewModel
+class ProfileViewModel @Inject constructor(
+    private val sessionManager: SessionManager
+) : ViewModel() {
+    val sessionState: StateFlow<SessionState> = sessionManager.sessionState
+}
+```
+   - With Hilt, you typically provide `SessionManager` as a singleton in a module:
+```kotlin
+@Module
+@InstallIn(SingletonComponent::class)
+object SessionModule {
+
+    @Provides
+    @Singleton
+    fun provideSessionManager(): SessionManager = SessionManager()
+}
+```
+   - Yes, the **UseCase/Manager holds the `MutableStateFlow` and exposes `StateFlow`**.
+   - ViewModels usually **do not each have their own copies** of that shared state; they just collect or map the shared `StateFlow` into their own UI state.
+   - This avoids duplication of business logic and ensures all ViewModels see the same source of truth.
+
+12. How can you use Hilt to provide a singleton repository instance that can be injected into multiple ViewModels in an Android app? 
+    - Define the repository implementation and mark it as injectable:
+```kotlin
+@Singleton
+class BillsRepositoryImpl @Inject constructor(
+    private val apiDataSource: ApiBillsDataSource,
+    private val cacheDataSource: CacheBillsDataSource
+) : BillsRepository {
+    // ...implementation...
+}
+```
+    - Create a Hilt module that tells Hilt how to bind the implementation to the interface:
+```kotlin
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class RepositoryModule {
+
+    @Binds
+    @Singleton
+    abstract fun bindBillsRepository(
+        impl: BillsRepositoryImpl
+    ): BillsRepository
+}
+```
+    - Inject the repository into ViewModels using `@HiltViewModel` and constructor injection:
+```kotlin
+@HiltViewModel
+class BillsViewModel @Inject constructor(
+    private val billsRepository: BillsRepository
+) : ViewModel() {
+    // use billsRepository here
+}
+```
+    - Hilt ensures there is **one singleton instance** of `BillsRepositoryImpl` in the `SingletonComponent`, and all ViewModels that depend on `BillsRepository` get that same instance.
+
 ### Time where you had to collab with a designer or a PM
 What they want:
 - Can you communicate well with non-engineers?
@@ -378,7 +711,7 @@ What they want:
 - Do you design/code so others can work on it easily later?
 - Can you explain concrete practices, not just “we follow clean code”?
 - Do you think about refactoring, modularization, tests, and reducing tech debt?
-  - tech debt is any code that is not maintainable or scalable in the long term 
+  - tech debt is any code that is not maintainable or scalable in the long term
     - some decisions are made to hit deadlines but need to be revisited later so we tag them as tech debt
     - examples: duplicated code, lack of tests, poor architecture, lack of documentation, etc.
 
@@ -392,10 +725,10 @@ NOTES:
   - use cases -> verbs (GetProducts, AddToCart, etc.) that orchestrate repositories and business logic. Rules live here (pricing, inventory checks, eligibility, retries analytics hooks, etc.)
 - shared composable functions and themes
   - shared card component for product listing
-  - shared button and dropdown components 
+  - shared button and dropdown components
   - catalog of shared horizontal pager component with different parallax effects we can plug and play with
 - documentation
-  - reasoning for architecture decisions 
+  - reasoning for architecture decisions
   - how to add new features or components
 - CI
   - static analysis with detekt/ktlint
@@ -426,20 +759,27 @@ ANSWER:
 - Risk management: “I wrapped it behind a feature flag, added basic UI tests, and documented it as tech debt in our backlog.”
 - Follow-up: “After the sale, we refactored the navigation properly and removed the duplication. The short-term hack let us capture the revenue opportunity without destabilizing the rest of the app.”
 
+
+When have you had a disagreement with a peer about a technical approach? How did you resolve it?
+- aquisition by Sax Global
+- at Ally Bank I owned a feature that I started writing in
+
 ---
 
 Live coding
 1. android with payment dates with an api
 2. design how you would fetch the data from the api
 
---- 
+---
 
 Follow up questions for regarding the live coding
 1. Why is  "Loading" an object when it comes to a sealed class
    - In a sealed class hierarchy that models UI state (e.g., `Success`, `Error`, `Loading`), we often make `Loading` an `object` because it has **no data** and there is only one logical instance of it. Using an `object` avoids unnecessary allocations and makes intent clear: `Loading` is just a marker state, not a value that changes.
+   - objects are singletons in Kotlin, so we don’t need multiple instances of `Loading`. It also simplifies equality checks since all references to `Loading` point to the same instance.
 2. Api how would you make that available to multiple view models
    - use repository pattern and DI with Hilt
    - The interviewer is looking for separation of concerns and DI: define a single `Repository` (or API service) interface, provide a singleton instance via Hilt, and inject it into any ViewModel that needs it. That way, multiple ViewModels share the same API client/repository instead of each creating its own, and you can easily mock it in tests.
+   -
 3. How would we use hilt
    - In addition to explaining `@Inject`, `@Module`, `@Provides`, and `@Singleton`, mention the big picture:
    - TODO: I imagine this is more than explaining @Inject, @Module, @Provides, @Singleton, etc., what else should I cover?
@@ -719,136 +1059,3 @@ My work spanned both Android (native) and React Native modules, ensuring seamles
 •	Implemented predictable state management with Redux and integrated RESTful APIs and proprietary Zoom SDKs for authentication, meeting management, cloud recording, notifications, and analytics.
 •	Ensured cross-platform consistency by maintaining robust React Native ↔ Native bridges and aligning shared JS/TS modules with Android-specific behaviors.
 •	Delivered accessible, high-quality UI/UX using React Native and native Android views, supported by comprehensive testing (Jest, JUnit, Espresso) to ensure stability across phones and tablets.
-
----
-
-### Primary Narrative (React Native–Focused)
-
-**“Yes — at Zoom, a significant part of my work involved React Native.
-I wasn’t just writing React Native UI; I owned several cross-platform modules and built the native ↔ RN bridges that connected them to Zoom’s native Android SDK.**
-
-I led the development of major React Native features like profiles, feeds, messaging, and content creation, ensuring they behaved consistently on both Android and iOS while still integrating deeply with Zoom’s native video, audio, and meeting workflows.
-
-A big part of my role was optimizing the RN performance layer:
-
-* reducing unnecessary bridge crossings
-* rewriting unstable bridges
-* making sure JS state stayed in sync with the native WebRTC engine
-* and improving rendering times during heavy real-time video usage.
-
-I also implemented predictable state management with Redux, wired up authentication and meeting APIs, and rebuilt parts of the navigation and lifecycle handling to reduce ANRs and crashes under massive user growth.
-Overall, my cross-platform experience wasn’t superficial — I worked at the intersection of RN and native code and often had to debug both sides at once.”**
-
----
-
-### Follow-Up Questions + Killer Answers
-
-#### **1. How exactly did you use React Native at Zoom?**
-
-Use this:
-
-“I owned multiple RN screens end-to-end — profile, settings, messaging, content creation.
-But the more complex work was building and stabilizing the native ↔ React Native bridges so those screens could interact with the Zoom native SDK.
-
-This included:
-* exposing native meeting APIs to the JS layer
-* ensuring lifecycle events flowed correctly
-* handling threading and state sync
-* optimizing performance during UI-heavy or video-heavy tasks.”**
-
----
-
-#### **2. What challenges did you face using React Native in a real-time application?**
-
-Use these three:
-
-##### **Challenge 1 — Bridge Race Conditions**
-
-**Problem:** Early RN bridges weren’t lifecycle-aware → JS would request meeting state before the native SDK had initialized.
-**Fix:** Rewrote bridges to use standardized thread marshaling + defensive lifecycle checks.
-**Result:** Eliminated inconsistent meeting states and reduced random UI freezes.
-
----
-
-##### **Challenge 2 — Performance Bottlenecks**
-
-**Problem:** RN rerendering would sometimes collide with native video rendering.
-**Fix:**
-
-* reduced bridge calls
-* batched events
-* memoized and stabilized RN components
-* shifted heavy work back to native threads
-  **Result:** Cut rendering stalls during large meetings and improved perceived smoothness.
-
----
-
-##### **Challenge 3 — Device Fragmentation (2018 Android ecosystem)**
-
-**Problem:** Samsung + Xiaomi models crashed during gallery ↔ active-speaker transitions.
-**Fix:** Improved surface lifecycle timing + added decoder fallback logic.
-**Result:** Crash rate dropped significantly in international markets.
-
----
-
-#### **3. Can you explain how the React Native bridge works?**
-
-“React Native runs JS in a separate VM.
-When JS needs native work — camera access, navigation, WebRTC events — it serializes the call and sends it across the bridge to native code.
-Native executes the work and then sends results back over the bridge.
-
-Performance comes down to minimizing bridge crossings and ensuring heavy operations run natively or on background threads.”**
-
----
-
-#### **4. How did you ensure cross-platform consistency?**
-
-“I kept JS/TS modules shared across both platforms, but wrapped platform-specific behavior behind native modules.
-I tested each feature on both iOS and Android, validated UI parity, and ensured Redux state updates behaved identically across platforms.”
-
----
-
-#### **5. Why would you choose React Native over native?**
-
-“RN is great for shared UI, fast iteration, and productivity when both platforms share similar flows.
-But anything performance-critical — video, hardware acceleration, deep system APIs — I implemented natively.
-At Zoom we used a hybrid approach: cross-platform where possible, native where necessary.”
-
----
-
-### Short “Story Nuggets” You Can Drop in an Interview
-
-#### **Story: Fixing lifecycle-race issues between RN and Android native**
-
-* Early RN integration didn’t handle Android lifecycle correctly
-* Meeting state arrived before RN was ready
-* JS layer displayed stale or incorrect participant state
-* **You rewrote the bridge to enforce lifecycle-safe event ordering**
-
----
-
-#### **Story: Improving performance during large meetings**
-
-* RN components rerendered unnecessarily during high-frequency events
-* You added memoization, batched events, and pushed heavy operations into native
-* **Result: Smoother transitions between gallery/active speaker**
-
----
-
-#### **Story: Debugging fragmentation issues with hardware decoders**
-
-* Some OEM devices couldn’t keep up with surface switches
-* You implemented fallback rendering paths + timing fixes
-* **Result: Reduced crashes in major global markets**
-
----
-
-### A Polished, Interview-Ready “Summary Statement”
-
-**“Yes, I have substantial React Native experience.
-At Zoom, I developed major RN modules, maintained native ↔ RN bridges, and optimized cross-platform performance during a period of massive user growth.
-Most importantly, I worked in a hybrid environment — building shared JS modules while also integrating tightly with native Android features like WebRTC, meetings, and navigation.
-This gave me hands-on experience balancing cross-platform efficiency with native-level reliability and performance.”**
-
----
-

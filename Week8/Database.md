@@ -6,6 +6,178 @@
 
 ---
 
+## Updating from API
+- When fetching data from a remote API, you almost always need to **sync remote data into a local cache** (Room/SQLDelight/Realm/etc.).
+- Goal: **UI reads from local DB**, network updates the DB in the background.
+
+### Scenarios where you access remote data **without** a local DB:
+- **Simple apps with no offline needs**
+    - Example: marketing/front-door apps that just show current promos or static content.
+
+- **Data that is always fresh, tiny, and cheap to fetch**
+    - Example: remote config flags, feature toggles, A/B variants.
+    - Often backed by a CDN or config service and cached in memory only.
+
+- **One-shot or low-frequency flows**
+    - Example: password reset, email verification, “contact us” form submission.
+    - User does an action, you call the API, show result, and discard.
+
+- **Ephemeral / real-time only data**
+    - Example: live stock quote ticker, live game scores, chat presence indicators.
+    - If the value only matters “right now” and isn’t reused later, a DB can be overkill.
+
+- **Highly sensitive data you don’t want at rest on device**
+    - Example: certain PCI or regulated fields where policy says “no local storage”.
+    - You fetch, show, and drop it, relying on backend as the source of truth.
+
+- **Prototype / internal tools where simplicity beats robustness**
+    - Early-stage experiments, admin tools, or short-lived proof-of-concepts
+    - You consciously accept that a failed network = no data.
+
+- **When another layer already handles caching sufficiently**
+    - Example: an image-only screen using an image loader (Coil/Glide) with its own disk cache.
+    - You might call APIs directly and rely on HTTP + image cache, not a domain DB.
+
+
+### Key Considerations
+- **Size of dataset**
+  - Small/medium lists (hundreds–few thousands) vs very large datasets.
+- **Frequency of updates**
+  - Rare updates vs near real-time updates.
+- **User edit capabilities (offline edits)**
+  - Read-only cache vs user can create/update/delete items while offline.
+- **Conflict resolution strategies**
+  - Last-write-wins, server-authoritative, per-field merge, manual conflict UI.
+- **Network & battery constraints**
+  - How often can you sync without draining battery or hitting rate limits?
+- **Pagination & partial data**
+  - Are you syncing a full dataset or only pages/segments?
+
+### Common High-Level Pattern
+- **Single source of truth**: UI observes local DB (e.g., Flow from Room/SQLDelight).
+- Network layer (Repository) is responsible for:
+  - Calling the API.
+  - Applying **deterministic updates** to the DB.
+  - Emitting loading/error/success states to the UI.
+- Sync can be triggered by:
+  - User actions (pull-to-refresh, navigation to screen).
+  - App lifecycle events (app start, foreground).
+  - Background work (WorkManager, periodic sync, retry of failed uploads).
+
+Example mental model:
+- Weather app with manual refresh:
+  - UI always renders from local DB.
+  - On refresh: call API → update local DB → UI updates automatically via Flow.
+  - Background: WorkManager can periodically refresh based on policy (Wi‑Fi only, charging, etc.).
+  - This keeps the app **responsive, offline-capable, and consistent**.
+
+---
+
+### Strategy 1: Full Replace (Delete + Insert)
+Use when:
+- Your cache is **read-only** on the client (users don’t edit locally), and
+- Dataset is **small/medium** (hundreds–few thousands of rows per user), and
+- You always fetch a **complete snapshot** from the backend.
+
+Pattern:
+- Wrap in a **transaction**:
+  - Delete existing rows for that scope (e.g., all products for a given user or category).
+  - Insert the fresh list from the server.
+
+Pros:
+- Simple, easy to reason about.
+- No chance of stale rows hanging around.
+
+Cons:
+- Can be expensive if dataset is large.
+- Briefly removes all rows if you don’t use a transaction (UI flicker).
+- Not suitable when the user can edit data offline (their edits would be lost).
+
+---
+
+### Strategy 2: Upsert / Partial Replace
+Use when:
+- Users **may edit some fields locally**, or
+- API returns **partial lists** (pagination, filtered views), or
+- Dataset is larger, and you don’t want to delete everything every time.
+
+Pattern:
+- For each item from the API:
+  - **Upsert**: insert if not exists, update if exists.
+- Optionally, mark unseen items as **stale** or delete them **scoped to the current query**.
+
+Implementation ideas:
+- Room: `@Insert(onConflict = OnConflictStrategy.REPLACE)` / custom upsert.
+- Maintain metadata per row, e.g. `lastUpdatedFromServerAt`.
+
+Pros:
+- Preserves local edits when designed carefully.
+- Works with paged/filtered API responses.
+
+Cons:
+- More complex rules for deletion of items not present in the latest response.
+- Need a clear policy: do missing items mean “deleted” or just “not in this page/filter”? 
+
+---
+
+### Strategy 3: Diff / Merge (Two-Way Sync)
+Use when:
+- Users can **edit data offline**, and
+- Server and client both own parts of the truth, or
+- Dataset is large and changes are incremental.
+
+Pattern:
+- Keep extra metadata:
+  - `updatedAt` / `version` from server.
+  - `locallyModifiedAt` / `pendingSync` flag on client.
+- When syncing:
+  - Compute **what changed locally** since last sync.
+  - Send client changes upstream (create/update/delete).
+  - Fetch server changes since last known version.
+  - **Merge** using a chosen conflict policy:
+    - Last-write-wins (compare timestamps).
+    - Field-level merge (server wins some fields, client others).
+    - Manual conflict resolution UI for complex cases.
+
+Implementation hints:
+- Use **tombstones** (soft deletes) instead of hard deletes for a period of time.
+- Consider background **retries** for failed uploads (WorkManager with backoff).
+
+Pros:
+- Robust for offline-first apps.
+- Avoids data loss when multiple devices edit the same entities.
+
+Cons:
+- Highest complexity: needs careful design, testing, and backend support.
+
+---
+
+### Strategy 4: Stale-While-Revalidate (SWR)
+Use when:
+- You want **fast-first load** from cache but also fairly fresh data.
+
+Pattern:
+1. Read from local DB and show cached data immediately.
+2. Trigger network request in background.
+3. When new data arrives, update DB and let UI recompose from Flow/state.
+
+Notes:
+- The **user always sees something**, even offline.
+- Combine with any of the above DB update strategies (full replace, upsert, etc.).
+
+---
+
+### Background Sync with WorkManager
+- Use **WorkManager** for:
+  - Periodic syncs (e.g., hourly product refresh, daily cleanup).
+  - Guaranteed delivery of **one-off** sync tasks (retry with backoff on failure).
+  - Constraints: only on Wi‑Fi, charging, idle, etc.
+- Typical pattern:
+  - Worker calls Repository → Repository updates DB using one of the strategies above.
+  - UI doesn’t know about the worker directly; it just observes DB changes.
+
+---
+
 ## Migrations and Schema Evolution
 - **Why migrations matter**:
   - Schema changes (adding/removing columns, changing types) can break existing installations.
@@ -274,4 +446,3 @@ Factors a senior Android dev should consider:
    - Focus on planning, migration strategy, and minimizing downtime/data loss.
 
 ---
-
