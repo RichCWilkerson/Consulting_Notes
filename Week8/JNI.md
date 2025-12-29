@@ -13,9 +13,17 @@
   - TODO: what are headers in this context?
 - It includes:
   - **Toolchain**: C/C++ compilers (Clang), linkers, debuggers.
+    - TODO: what does toolchain mean?
+    - TODO: what are linkers and debuggers in this context?
   - **Build tools**: CMake, `ndk-build` for compiling native code into shared libraries.
+    - CMake = cross-platform build system that generates native build files (new -> CMakeLists.txt)
+    - ndk-build = older build system using Android.mk files
   - **Platform headers & native libs**: `libc`, `libm`, logging (`liblog`), OpenGL ES, Vulkan, etc.
+    - TODO: what are platform headers?
+    - TODO: define libc and libm
   - **JNI headers**: APIs to interface with Java/Kotlin code running on ART.
+    - TODO: what are APIs in this context?
+    - TODO: what is ART?
 - The NDK is **optional** for most apps:
   - Use it only when you **need native performance** or must **reuse existing C/C++ code**.
 - In modern projects it’s most often used with **CMake** to build `.so` shared libraries that your Kotlin/Java code loads with `System.loadLibrary(...)`.
@@ -24,6 +32,8 @@
 
 ## Common JNI/NDK Libraries on Android
 - In practice you rarely write *everything* from scratch; you usually wrap or reuse native libraries such as:
+- TODO: if I am going to use a library for images like Coil, which C++ library would i use instead? is it worth doing? I essentially have many high quality images that need to be processed quickly on device.
+- TODO: Can you give examples for each of the libraries on how you would use them in an Android app? if they do the same thing what is the difference between them and which is preferable in which situation?
 
 - **Crypto / Security**
   - OpenSSL / BoringSSL (via NDK) for encryption, TLS, hashing.
@@ -90,27 +100,33 @@
 1. **Declare an external function in Kotlin/Java**
    ```kotlin
    class NativeLib {
+   // use a companion object to load the native library when the class is first used 
+   // like using lazy initialization
        companion object {
            init {
                System.loadLibrary("native-lib")
            }
        }
-
+        // external keyword indicates this function is implemented in native code (C/C++)
+        // the function name and signature must match the JNI implementation
        external fun stringFromNative(): String
+   
+   // you can add more external functions as needed
    }
    ```
 
 2. **Create the C++ implementation** (`native-lib.cpp`)
    ```cpp
-   #include <jni.h>
-   #include <string>
+   #include <jni.h> // required for JNI functions and types -> provides access to JNI API
+   #include <string> // for std::string
 
-   extern "C"
+   extern "C" // disable C++ name mangling so the VM can find the symbol
    JNIEXPORT jstring JNICALL
-   Java_com_example_app_NativeLib_stringFromNative(
+   Java_com_example_app_NativeLib_stringFromNative( // function name pattern: Java_<package>_<ClassName>_<methodName>
            JNIEnv* env,
            jobject /* this */) {
        std::string hello = "Hello from C++";
+   // hello.c_str() gets the C-style string (const char*) from std::string
        return env->NewStringUTF(hello.c_str());
    }
    ```
@@ -122,20 +138,22 @@
 3. **Tell Gradle to build native code** (CMake)
    - `CMakeLists.txt` at module root:
      ```cmake
+     # TODO break down why we need each line here
      cmake_minimum_required(VERSION 3.10.2)
 
-     project("myapplication")
+     project("myapplication") # name of the project -> so that CMake knows what to build
 
-     add_library(
-             native-lib
-             SHARED
-             native-lib.cpp)
+     add_library( # adds the JNI shared library
+             native-lib # name of the library = Kotlin/Java will load this with System.loadLibrary("native-lib")
+             SHARED # type: shared library (.so)
+             native-lib.cpp) # source files to compile = C++ source files
 
-     find_library(
+     find_library( # finds the log library from the NDK
              log-lib
              log)
 
-     target_link_libraries(
+     target_link_libraries( # links the native library against the log library -> allows using Android logging functions rather than reinventing logging 
+     # TODO: does this mean we can use Kotlin logging functions in C++?
              native-lib
              ${log-lib})
      ```
@@ -172,6 +190,7 @@
 
 4. **Call it from Kotlin**
    ```kotlin
+   // TODO: what if we need to pass parameters to the native function? like an image byte array? 
    val nativeLib = NativeLib()
    textView.text = nativeLib.stringFromNative()
    ```
@@ -265,12 +284,14 @@
   - Manage long-lived native objects (e.g., `Engine*`) via `jlong` handles returned to Kotlin:
     ```cpp
     JNIEXPORT jlong JNICALL Java_com_example_Engine_nativeCreate(JNIEnv*, jobject) {
+    // auto* means the compiler infers the type of engine based on the right-hand side
         auto* engine = new Engine();
         return reinterpret_cast<jlong>(engine);
     }
 
     JNIEXPORT void JNICALL Java_com_example_Engine_nativeDestroy(JNIEnv*, jobject, jlong handle) {
         auto* engine = reinterpret_cast<Engine*>(handle);
+    // delete frees the memory allocated for the engine object
         delete engine;
     }
     ```
@@ -295,6 +316,7 @@
 3. **Threading Issues**
    - Using a `JNIEnv*` on a different thread than the one it was obtained from.
    - Forgetting to attach/detach native threads to the JVM (`AttachCurrentThread` / `DetachCurrentThread`).
+   - TODO: can i use coroutines when calling the native code to designate Default dispatcher for background thread calls?
 
 4. **Performance Traps**
    - Frequent small cross-language calls in hot paths → JNI overhead dominates.
@@ -328,6 +350,7 @@
 
 - **Profiling**
   - Use Android Studio profiler / `perf` / `systrace` to confirm native code is really a bottleneck.
+  - TODO: do i run the profilers on the kotlin side or the native side?
 
 ---
 

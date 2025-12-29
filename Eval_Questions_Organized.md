@@ -21,7 +21,6 @@ How does Kotlin help you avoid `NullPointerException` compared to Java, and how 
 **High-Level (Student)**
 - Kotlin has **nullable** (`String?`) and **non-nullable** (`String`) types.
 - Compiler forces you to handle `String?` safely using things like `?.`, `?:`, and `let`.
-- `lateinit` and `lazy` handle cases where you can’t initialize immediately.
 
 **Interviewer Details**
 - **Type system**:
@@ -32,9 +31,6 @@ How does Kotlin help you avoid `NullPointerException` compared to Java, and how 
   - Elvis: `displayName = user?.name ?: "Guest"` – default on null.
   - Not-null assertion: `user!!` – throws NPE if actually null; treat as last resort.
   - Scope functions: `name?.let { /* it is non-null */ }` keeps null logic localized.
-- **Initialization helpers**:
-  - `lateinit var x: Foo`: non-null property initialized later (no primitives, must be `var`).
-  - `val x by lazy { expensiveInit() }`: computed on first access and then cached.
 - **API design**:
   - Prefer non-null parameters/returns.
   - Only use nullable types where `null` is a real, meaningful state.
@@ -43,7 +39,6 @@ How does Kotlin help you avoid `NullPointerException` compared to Java, and how 
 > Kotlin moves null safety into the type system. 
 > Types are either nullable, like `String?`, or not, like `String`, and the compiler forces you to handle the nullable ones with things like safe calls and the Elvis operator. 
 > I try to keep null-handling very local using `let` and avoid `!!` as much as possible. 
-> For initialization cases, I’ll use `lateinit` or `lazy` instead of propagating nulls. 
 > Designing APIs to be non-null by default means most potential NPEs are caught at compile time instead of in production.
 
 ---
@@ -150,6 +145,89 @@ What’s the difference between `lateinit` and `lazy`, and when do you use each?
 > I use `lateinit` for non-null vars that can’t be initialized in the constructor, like injected dependencies or Android view bindings. 
 > I use `lazy` for read-only values that are expensive to create and should only be initialized when first accessed. 
 > So `lateinit` is about “I promise to set this before I use it,” while `lazy` is about “compute this when needed and then cache it.”
+
+---
+
+### 1.6 Kotlin SAM Conversions & Inline Variants (`inline`, `crossinline`, `noinline`, `reified`)
+
+**Master Question**  
+What is Kotlin SAM conversion and how do inline functions (including `crossinline`, `noinline`, and `reified`) work and when would you use them?
+
+**High-Level (Student)**
+- **SAM** stands for **Single Abstract Method** – interfaces with exactly one abstract method.
+- Kotlin lets you implement SAM interfaces using **lambdas**, which keeps code concise and readable.
+- **Inline** functions remove the call/lambda overhead and enable special features like **reified** generics and **non-local returns**.
+
+**Interviewer Details**
+- **SAM Conversions**:
+  - A SAM interface has one abstract method (e.g. `Runnable`, `Comparator<T>`, many Java listener interfaces).
+  - Kotlin allows you to pass a lambda instead of creating an anonymous class, which is called SAM conversion.
+  - Very common when working with Java APIs that expect callbacks.
+
+```java
+// Java
+public static <T> T callSupplier(Supplier<T> supplier) {
+    return supplier.get();
+}
+```
+
+```kotlin
+// Kotlin – SAM conversion: lambda used where Supplier<T> is expected
+val greeting: String = callSupplier { "Hello, World!" }
+val answer: Int = callSupplier { 42 }
+val user: User = callSupplier { loadUserFromDb() }
+```
+
+- **Inline functions**:
+  - Marked with `inline`: `inline fun <T> call(block: () -> T): T { ... }`.
+  - The compiler copies the function body into each call-site at compile time.
+  - Benefits:
+    - Avoids allocation of function objects and extra calls for small higher-order utilities.
+    - Enables **non-local returns** from lambdas (you can `return` from the caller inside a regular lambda).
+
+- **`crossinline`**:
+  - Used on a lambda parameter of an inline function: `inline fun f(crossinline block: () -> Unit) { ... }`.
+  - Forbids **non-local returns** from that lambda.
+    - TODO: what does non-local return mean? I still don't fully understand this concept or purpose...
+  - Needed when you store the lambda or call it from another context (e.g., another lambda, thread, or callback).
+
+```kotlin
+inline fun performOperation(crossinline operation: () -> Unit) {
+    val runnable = Runnable {
+        operation() // cannot use non-local return here
+    }
+    runnable.run()
+}
+```
+
+- **`noinline`**:
+  - Marks a lambda parameter of an inline function that **should not be inlined**.
+  - That lambda is treated as a normal function object so you can **store** it or **pass** it to other functions.
+  - Useful to avoid code bloat or to allow that lambda to "escape" the inline function.
+
+```kotlin
+inline fun performOperation(
+    crossinline operation: () -> Unit,
+    noinline callback: () -> Unit
+) {
+    operation()   // inlined
+    callback()    // not inlined
+}
+```
+
+- **`reified` type parameters**:
+  - Only available on **inline** functions: `inline fun <reified T> isInstanceOf(value: Any): Boolean { ... }`.
+  - Let you access the actual type at runtime (`value is T`, `T::class`) despite Java type erasure.
+  - Great for type-safe generic helpers, reflection utilities, or factory methods.
+
+```kotlin
+inline fun <reified T> isInstanceOf(value: Any): Boolean {
+    return value is T // can check type at runtime
+}
+```
+
+**Succinct Interview Answer**
+> A SAM is an interface with a single abstract method, and Kotlin lets me implement those with lambdas instead of anonymous classes – that’s SAM conversion and it makes Java interop much cleaner. I mark small higher-order utilities as `inline` when they’re called a lot so I don’t pay the lambda allocation cost and can also use features like reified type parameters. `crossinline` and `noinline` just refine how inline lambdas behave: `crossinline` disallows non-local returns when the lambda is called later, and `noinline` keeps a particular lambda as a normal function object so I can store or pass it around. With `reified` generics I can safely do things like `value is T` inside an inline function, which is really useful for type-safe helpers.
 
 ---
 
@@ -496,12 +574,6 @@ What’s the difference between stateful and stateless composables, and how do y
   - Start with stateless building blocks and then have a parent composable or ViewModel own the state.
   - Only the child(ren) depending on the changed state are actually recomposed.
 
-- **EXAMPLE**:
-  - When onNameChange updates state to a new UiState, the Parent call will be re-run.
-  - Compose then compares arguments to each child:
-    - ChildA sees name changed → it recomposes.
-    - ChildB sees description is the same value as before → it will be skipped (no recomposition body run), even though Parent itself re-entered.
-
   - If instead you pass the whole state object down to both children (e.g., ChildB(state = state)), then any change to state means its parameter is “different”, so ChildB will recompose too, even if it only uses description.
 ```kotlin
 @Composable
@@ -657,7 +729,7 @@ class UserViewModel {
 What is `CompositionLocal` and when would you use it?
 
 **High-Level (Student)**
-- It’s like a **scoped global** for a subtree of your composable hierarchy.
+- It’s a **scoped global** for a subtree of your composable hierarchy.
 - Useful for theming, localization, or cross-cutting values.
 
 **Interviewer Details**
@@ -1180,10 +1252,3 @@ How can you trigger initial data loading in a screen, and what trade-offs exist 
 
 **Succinct Interview Answer**
 > I’ve used all three approaches: firing a load from the ViewModel `init`, triggering it from the UI in a `LaunchedEffect`, and tying it to Flow subscription with `onStart`. These choices trade off simplicity vs testability. Lately I prefer either a clearly keyed `LaunchedEffect` from the UI or using Flow’s `onStart` and `stateIn` so it’s obvious when loading starts and tests can control it more easily.
-
----
-
-This organized file is meant as your **primary study guide**. As you encounter new interview questions, you can:
-- Attach them to an existing **Master Question** here, or
-- Add a new section using the same structure: *Master Question → High-Level → Details → Succinct Answer*.
-

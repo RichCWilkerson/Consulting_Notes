@@ -61,7 +61,8 @@ How GraphQL solves these issues:
 - **Introspection** – the schema is queryable at runtime, which enables tools like GraphiQL, Apollo Studio, and codegen.
 - **Real-time updates with subscriptions** – supports server→client push (e.g., live updates) over WebSockets or similar transports.
 
-> NOTE: GraphQL is about **how** you expose and query data, not about the underlying database or microservices. Under the hood, resolvers can still call REST, SQL, NoSQL, etc.
+> NOTE: GraphQL is about **how** you expose and query data, not about the underlying database or microservices. 
+> Under the hood, resolvers can still call REST, SQL, NoSQL, etc.
 
 ### REST vs GraphQL availability 
 - **Are all REST APIs available as GraphQL?**

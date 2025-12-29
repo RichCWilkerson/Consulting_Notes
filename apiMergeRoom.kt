@@ -449,5 +449,41 @@ fun reverseCharsInWord(sent: String): String {
 
 
 
+// ---------------------------------------------------------------
+/*
+Given a list of integers, write a function that returns the top K most frequent numbers in the list.
+
+If two numbers have the same frequency, return the smaller number first.
+nums = [1,1,1,2,2,3,3,3,4]
+k = 2
+Frequency: 1 → 3 times, 3 → 3 times, 2 → 2 times, 4 → 1 time
+
+Top 2 frequent: 1 and 3
+
+Tie broken by smaller number
+[1, 3]
+ */
+
+
+fun getTopKNumbers(nums: List<Int>, K: Int) : List<Int> {
+
+    val frequencies = mutableMapOf<Int, Int>()
+
+    nums.forEach { num ->
+        frequencies[num] = frequencies.getOrDefault(num, 0) + 1
+    }
+
+    // frequencies.entries returns a Set<Map.Entry<Int, Int>> (key/value pairs).
+    return frequencies.entries
+        // sortedWith is different than sortedBy as it can take multiple sortings by using .thenBy. use .thenByDescending to sort the other direction
+        // the order of sorting prioritizes the first sortings
+        // here value is the primary sort -> then the key
+        .sortedWith(compareByDescending<Map.Entry<Int, Int> { it.value }
+            .thenBy { it.key }) // this will furthur sort any tied values by the key, by default the lower value
+        .map { it.key } // converts the list of Map.Entry objects to a List<Int> of keys (you need this because the function should return the numbers, not entries). .map always creates a new list of the values passed (here it.key)
+        .take(K) // returns up to K items from the start of the list. If K is larger than the list size you get fewer items; consider returning early for K <= 0 if you want to handle that case explicitly.
+}
+
+
 
 

@@ -1,4 +1,8 @@
 # MVI vs MVVM
+
+[MVI Medium](https://medium.com/@mohammedkhudair57/mvi-architecture-pattern-in-android-0046bf9b8a2e)
+
+
 ## Same
 - these are presentational architectural patterns
 - both patterns separate UI from business logic
@@ -195,6 +199,7 @@ class MyMviViewModel(
         }
     }
     
+    // can also be called handleIntent
     private fun onAction(action: MviAction) {
         when (action) {
             is MviAction.ToggleLike -> toggleLike()

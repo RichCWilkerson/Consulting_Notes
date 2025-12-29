@@ -164,16 +164,17 @@ Our initial QA environment, using a narrow set of lab devices, didn’t fully re
 2. **Collaboration with hardware and platform teams**  
    - Worked with platform / firmware engineers to understand the exact sequence between Bluetooth HAL events and `AudioManager` focus requests.  
    - Together we confirmed that audio focus was occasionally **released too early**, before the reconnect path had completed.
+     - TODO: why would it be released too early? How do we know this?
 
 3. **Code fix and testing**  
    - Implemented a small **debounce and state synchronization mechanism** in the Bluetooth connection manager so that disconnect and reconnect events could not overlap in an unsafe way.  
+     - TODO: how does a small debounce help here? What exactly does it do?
+     - TODO: state synchronization here is ensuring that STATE_CONNECTED is only set after audio focus is fully acquired?
    - Verified the fix through extended in-car testing and regression runs using different phones and firmware builds.
 
 4. **Process improvement**  
    - Documented the failure flow and added targeted test cases for switching between call and media sessions.  
    - Proposed more **real-world simulation scenarios** for QA, including mixed phone models, longer driving sessions, and repeated connect/disconnect cycles.
-
-This story is useful in interviews to highlight **cross-team debugging, understanding of audio/Bluetooth interactions, and process improvements after an incident**.
 
 ---
 

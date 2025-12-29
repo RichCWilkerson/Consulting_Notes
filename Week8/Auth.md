@@ -389,3 +389,9 @@ Use these to practice explaining your understanding.
   - Refresh flows, logout, and revocation behavior.
 
 Use this file as a map: if an interviewer goes deep in one area (e.g., OAuth2, Keystore, or biometrics), you can speak to the basics, trade-offs, and how you’d apply it in a real Android project.
+
+
+---
+
+## Additional Notes
+- Enforced strict no-cache and no-screenshot policies for sensitive screens using FLAG_SECURE, along with clipboard and screen-recording restrictions to reduce data exfiltration risk in banking flows.

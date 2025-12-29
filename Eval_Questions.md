@@ -1642,3 +1642,67 @@ defensive mapping - defaults in your data layer to avoid nulls from the api
 •    Additive changes first
 •    Background migrations
 •    Avoid blocking main thread
+
+
+## Composable’s lifecycle is defined by following phases
+
+Compose Lifecycle phases:
+1. Enter the Composition — When Jetpack compose runs the composables first time, It keeps track of Composables used to describe the UI and builds a tree-structure of all composables that’s called Composition. 
+2. Recomposition — It’s the phase when any state changes which eventually impacts the UI, Jetpack Compose smartly identifies those Composables and recomposes only them without the need to update all Composables. 
+3. Leave the Composition — It’s the last phase when the UI is no longer visible so it removes all resources consumed.
+
+Compose Rendering phases:
+1. Measure — In this phase, Jetpack Compose measures the size and position of each Composable based on the constraints provided by the parent layout. 
+2. Layout — In this phase, Jetpack Compose arranges the Composables on the screen based on the measurements taken in the previous phase 
+3. Draw — In this phase, Jetpack Compose draws the UI on the screen based on the current state of the Composables.
+
+> NOTE: Recomposition does not always force measure/layout/draw (if only text content changed and size/constraints are unchanged, only draw may run).
+> If using StateUi (Loading, Success, Error), recomposition will trigger measure/layout/draw as the whole Composable tree is changing.
+
+---
+
+## What is an inline function in Kotlin?
+[Medium Article on inline/crossinline/noinline](https://medium.com/android-news/inline-noinline-crossinline-what-do-they-mean-b13f48e113c2)
+- a function where the compiler replaces the function call with the actual body of the function code at compile time, eliminating the overhead of a function call at runtime.
+- This is particularly useful for optimizing performance when using higher-order functions and lambdas.
+
+
+## What is a crossinline function in Kotlin?
+- a modifier used in Kotlin to indicate that a lambda parameter of an inline function cannot use non-local returns.
+- This is useful when you want to ensure that the lambda does not attempt to return from the enclosing function, which would lead to unexpected behavior.
+```kotlin
+// Example of crossinline function
+inline fun performOperation(crossinline operation: () -> Unit) {
+    val runnable = Runnable {
+        operation() // cannot use non-local return here
+    }
+    runnable.run()
+}
+```
+
+## What is a noinline function in Kotlin?
+- a modifier used in Kotlin to indicate that a lambda parameter of an inline function should not be inlined.
+- This is useful when you want to pass a lambda to another function or store it in a variable, as inlining would prevent that.
+
+- Function: noinline forces the compiler to create a separate function object and function call for that specific lambda, avoiding the bytecode copy-paste that usually happens with inlining. 
+- Purpose: It is used when a lambda needs to "escape" the scope of the inline function (e.g., for event listeners or callbacks) or to prevent non-local returns from that specific lambda.
+```kotlin
+// Example of noinline function
+inline fun performOperation(crossinline operation: () -> Unit, noinline callback: () -> Unit) {
+    operation() // inlined
+    callback() // not inlined
+}
+```
+
+## What is reified keyword in Kotlin?
+- a modifier used in Kotlin to indicate that a type parameter of an inline function should be reified.
+- This allows you to access the actual type of the generic parameter at runtime, which is normally not possible due to type erasure.
+- When to use:
+  - Use reified type parameters when you need to perform type checks or access type-specific functionality within an inline function.
+  - This is particularly useful for functions that need to work with generic types, such as type casting or reflection.
+```kotlin
+// Example of reified function
+inline fun <reified T> isInstanceOf(value: Any): Boolean {
+    return value is T // can check type at runtime
+}
+```
