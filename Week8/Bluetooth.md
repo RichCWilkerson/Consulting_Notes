@@ -1,3 +1,7 @@
+# Resources:
+[Build Chat App with Bluetooth - Youtube](https://www.youtube.com/watch?v=A41hkHoYu4M&pp=ygUWcGhpbGlwcCBsYWNrbmVyIGVuZXJneQ%3D%3D)
+
+
 # Bluetooth on Android – Senior Android Dev Notes
 
 ## 1. Big Picture

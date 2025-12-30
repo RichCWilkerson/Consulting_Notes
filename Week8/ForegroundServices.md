@@ -1,8 +1,19 @@
 # Foreground Services
 
-## Quick Purpose
-Use a foreground service for user-noticeable, ongoing work that must continue even if the UI goes to background (music playback, active workout tracking, navigation turn-by-turn). Prefer WorkManager / JobScheduler for deferrable, non user‑visible tasks.
+## Resources:
+[Medium Overview](https://medium.com/@sandeepkella23/everything-about-android-services-f6c031652197)
+- uses java examples but concepts still apply
+[Medium Comprehensive Guide on Services](https://medium.com/@jhnaiem96/understanding-android-services-a-comprehensive-guide-55ebb920ca54)
+- uses kotlin. Very good at types of services and when to use what.
 
+
+## Quick Purpose
+Use a foreground service for user-noticeable, ongoing work that must continue even if the UI goes to background (music playback, active workout tracking, navigation turn-by-turn). 
+Prefer WorkManager / JobScheduler for deferrable, non user‑visible tasks.
+
+> NOTE: most services are for foreground use cases; background services have severe restrictions since Android 8.0 (Oreo) 2018.
+> Background tasks are better handled by WorkManager, JobScheduler, or Firebase JobDispatcher.
+> We can also use Service for AIDL/bound use cases, but foreground services are typically started services with ongoing notifications.
 
 ## Core Concepts
 - **Service**: Component with no UI that can run even when activity not visible. Do not assume it runs forever—system may kill.
@@ -15,7 +26,8 @@ Use a foreground service for user-noticeable, ongoing work that must continue ev
 
 
 ## Common Misconceptions (Corrections)
-- You do NOT always "require two permissions". Base requirement: `<uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>`. Additional specific permissions only if using special types (e.g., location, camera) or posting notifications (runtime permission `POST_NOTIFICATIONS` on API 33+). 
+- You do NOT always "require two permissions". Base requirement: `<uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>`. 
+  - Additional specific permissions only if using special types (e.g., location, camera) or posting notifications (runtime permission `POST_NOTIFICATIONS` on API 33+). 
 - Returning `super.onStartCommand` is ambiguous; explicitly return a start mode: `START_STICKY`, `START_NOT_STICKY`, or `START_REDELIVER_INTENT` based on desired restart semantics.
 - Use `ContextCompat.startForegroundService(context, intent)` when starting an FGS from a context that might be in background (Android 8.0+ restrictions). Then call `startForeground(...)` quickly (≤5s) in `onStartCommand`.
 - Call `stopForeground(true)` (to remove the notification) before `stopSelf()` when you are done.

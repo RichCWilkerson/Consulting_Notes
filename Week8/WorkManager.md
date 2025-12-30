@@ -1,6 +1,41 @@
 # WorkManager
-- WorkManager schedules deferrable background work with guaranteed execution under constraints, even if the app/process is killed or device restarts (with backoff and retries).
+
+## Resources:
+[Medium Comprehensive Guide to WorkManager](https://medium.com/@appdevinsights/work-manager-android-6ea8daad56ee)
+- very good overview of features and concepts
+[Medium WorkManager](https://medium.com/@nachare.reena8/android-workmanager-overview-best-practices-and-when-to-avoid-it-5d857977330a)
+- provided better scenarios on when to use/avoid WorkManager
+
+
+## Overview
+- WorkManager schedules deferrable, asynchronous background work with guaranteed execution under constraints, even if the app/process is killed or device restarts (with backoff and retries).
 - It’s part of Jetpack and typically the best choice for: syncs, backups, log uploads, periodic jobs, file processing when not user‑visible, etc.
+
+Key features:
+1. Backward Compatibility: 
+   - automatically chooses the best available method for scheduling tasks based on the device’s API level. 
+   - It uses JobScheduler on Android 23 (Marshmallow) and later falls back to AlarmManager for older devices.
+2. Flexibility in Scheduling:
+   - schedule tasks with various constraints, such as network availability, charging status, and device idle state.
+3. Guaranteed Execution:
+   - even if the application is killed or the device is rebooted. It manages the persistence of tasks, ensuring that they are rescheduled and executed
+4. Chained Tasks:
+   - one task triggers the next upon completion. This enables you to organize and execute a sequence of background tasks.
+5. Periodic Tasks:
+   - allowing you to schedule tasks to run at specified intervals.
+   - good for syncing data or performing regular maintenance.
+6. Observer Pattern:
+   - You can observe the status of your background tasks using LiveData or other lifecycle-aware components, making it easy to react to task completion or failure
+7. Custom Constraints:
+   - define custom constraints for your tasks, such as requiring the device to be on Wi-Fi or charging.
+8. Automatic Threading:
+   - automatically manages the execution of tasks on the appropriate background thread, simplifying the development process.
+9. Compatibility with Jetpack Libraries:
+   - such as LiveData and ViewModel. This integration provides a cohesive development experience and promotes best practices in modern Android app development.
+10. Automatic Backoff Policy:
+   - automatically applies a back-off strategy before retrying the task, preventing constant retries in the case of persistent failures.
+11. Testing Support:
+   - provides testing support, allowing developers to test their background tasks in isolation.
 
 
 ## Constraints

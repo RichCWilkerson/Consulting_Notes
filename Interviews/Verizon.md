@@ -242,7 +242,9 @@ For Android/video/telecom context:
   - On‑device processing engines where GC pressure matters.
 
 Interview angle:
-> “FlatBuffers is a binary format optimized for zero‑copy access. Instead of fully deserializing into objects like Protobufs, you can read directly from a byte buffer. It’s useful when you need very low latency or you’re repeatedly traversing large datasets—common in games or some real‑time telemetry—though in typical mobile apps Protobufs or JSON are more common.”
+> “FlatBuffers is a binary format optimized for zero‑copy access. 
+> Instead of fully deserializing into objects like Protobufs, you can read directly from a byte buffer. 
+> It’s useful when you need very low latency or you’re repeatedly traversing large datasets—common in games or some real‑time telemetry—though in typical mobile apps Protobufs or JSON are more common.”
 
 ---
 
@@ -262,7 +264,8 @@ In a streaming/telecom context:
   - Jitter, packet loss, and ordering are handled by RTP-aware libraries and jitter buffers.
 
 Interview angle:
-> “RTP is the real‑time transport layer under a lot of voice/video systems—carrying timestamped audio/video packets over UDP so players can reconstruct streams in order and on time. On Android I typically consume it through higher‑level libraries like WebRTC or SIP stacks rather than implementing RTP by hand.”
+> “RTP is the real‑time transport layer under a lot of voice/video systems—carrying timestamped audio/video packets over UDP so players can reconstruct streams in order and on time. 
+> On Android I typically consume it through higher‑level libraries like WebRTC or SIP stacks rather than implementing RTP by hand.”
 
 ---
 

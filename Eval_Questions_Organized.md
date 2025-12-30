@@ -188,7 +188,6 @@ val user: User = callSupplier { loadUserFromDb() }
 - **`crossinline`**:
   - Used on a lambda parameter of an inline function: `inline fun f(crossinline block: () -> Unit) { ... }`.
   - Forbids **non-local returns** from that lambda.
-    - TODO: what does non-local return mean? I still don't fully understand this concept or purpose...
   - Needed when you store the lambda or call it from another context (e.g., another lambda, thread, or callback).
 
 ```kotlin
@@ -227,7 +226,10 @@ inline fun <reified T> isInstanceOf(value: Any): Boolean {
 ```
 
 **Succinct Interview Answer**
-> A SAM is an interface with a single abstract method, and Kotlin lets me implement those with lambdas instead of anonymous classes – that’s SAM conversion and it makes Java interop much cleaner. I mark small higher-order utilities as `inline` when they’re called a lot so I don’t pay the lambda allocation cost and can also use features like reified type parameters. `crossinline` and `noinline` just refine how inline lambdas behave: `crossinline` disallows non-local returns when the lambda is called later, and `noinline` keeps a particular lambda as a normal function object so I can store or pass it around. With `reified` generics I can safely do things like `value is T` inside an inline function, which is really useful for type-safe helpers.
+> A SAM is an interface with a single abstract method, and Kotlin lets me implement those with lambdas instead of anonymous classes – that’s SAM conversion and it makes Java interop much cleaner. 
+> I mark small higher-order utilities as `inline` when they’re called a lot so I don’t pay the lambda allocation cost and can also use features like reified type parameters. 
+> `crossinline` and `noinline` just refine how inline lambdas behave: `crossinline` disallows non-local returns when the lambda is called later, and `noinline` keeps a particular lambda as a normal function object so I can store or pass it around. 
+> With `reified` generics I can safely do things like `value is T` inside an inline function, which is really useful for type-safe helpers.
 
 ---
 
@@ -457,7 +459,8 @@ When would you use a simple coroutine returning a single value vs a `Flow` retur
   - Composable with operators like `map`, `filter`, `debounce`, `combine`.
 
 **Succinct Interview Answer**
-> If I just need a single response—like fetching a user profile—I’ll use a suspend function and return the result directly. If I’m modeling a stream of values over time, like database changes, search suggestions, or paginated data, I’ll use a Flow because it can emit multiple values and compose nicely with operators like `debounce` and `combine`.
+> If I just need a single response—like fetching a user profile—I’ll use a suspend function and return the result directly. 
+> If I’m modeling a stream of values over time, like database changes, search suggestions, or paginated data, I’ll use a Flow because it can emit multiple values and compose nicely with operators like `debounce` and `combine`.
 
 ---
 
@@ -665,6 +668,7 @@ What is recomposition in Compose, and how do `remember` and the effect APIs help
   - `SideEffect`: non-suspending, runs after every successful recomposition.
   - `DisposableEffect(key)`: has `onDispose` to cleanup when leaving composition.
     - non-suspending setup/teardown tied to lifecycle.
+    - use for registering listeners, starting animations, etc.
   - **`rememberCoroutineScope`**:
     - Provides a coroutine scope tied to the composable’s lifecycle for launching coroutines in response to UI events.
     - Useful for things like showing snackbars or animations.
@@ -719,7 +723,8 @@ class UserViewModel {
 ```
 
 **Succinct Interview Answer**
-> My main tools are keeping data models immutable and stable, hoisting state to the right level, using `remember` and `derivedStateOf` for expensive or derived values, and breaking large composables into smaller ones. In lists I use keys and avoid doing heavy work in the `item` lambda so that scrolling doesn’t cause excessive recomposition.
+> My main tools are keeping data models immutable and stable, hoisting state to the right level, using `remember` and `derivedStateOf` for expensive or derived values, and breaking large composables into smaller ones. 
+> In lists I use keys and avoid doing heavy work in the `item` lambda so that scrolling doesn’t cause excessive recomposition.
 
 ---
 
@@ -739,7 +744,9 @@ What is `CompositionLocal` and when would you use it?
 - Avoid using it for everything; prefer explicit parameters for regular data.
 
 **Succinct Interview Answer**
-> `CompositionLocal` lets me provide a value high up in the Compose tree and have any child read it without threading it through every function parameter. It’s perfect for things like themes, localization, or other cross-cutting concerns. I use it sparingly—mostly for framework-level concerns—so my regular screen data still flows explicitly through parameters.
+> `CompositionLocal` lets me provide a value high up in the Compose tree and have any child read it without threading it through every function parameter. 
+> It’s perfect for things like themes, localization, or other cross-cutting concerns. 
+> I use it sparingly—mostly for framework-level concerns—so my regular screen data still flows explicitly through parameters.
 
 ---
 
@@ -761,7 +768,10 @@ Why did you or would you adopt Jetpack Compose instead of the traditional View s
   - Interoperable with Views to support incremental migration.
 
 **Succinct Interview Answer**
-> I like Compose because it gives me a fully declarative, Kotlin-first way to build UIs. The UI is just a function of state, which matches how we already design ViewModels with Flows. It cuts a lot of boilerplate compared to XML plus Adapters, and makes things like animations, theming, and state handling feel much more natural. Plus it coexists with Views, so you can migrate screens gradually.
+> I like Compose because it gives me a fully declarative, Kotlin-first way to build UIs. 
+> The UI is just a function of state, which matches how we already design ViewModels with Flows. 
+> It cuts a lot of boilerplate compared to XML plus Adapters, and makes things like animations, theming, and state handling feel much more natural. 
+> Plus it coexists with Views, so you can migrate screens gradually.
 
 ---
 
@@ -1251,4 +1261,16 @@ How can you trigger initial data loading in a screen, and what trade-offs exist 
 - **Flow lifecycle**: use `.onStart { load() }` and `stateIn` to tie loading to subscriptions.
 
 **Succinct Interview Answer**
-> I’ve used all three approaches: firing a load from the ViewModel `init`, triggering it from the UI in a `LaunchedEffect`, and tying it to Flow subscription with `onStart`. These choices trade off simplicity vs testability. Lately I prefer either a clearly keyed `LaunchedEffect` from the UI or using Flow’s `onStart` and `stateIn` so it’s obvious when loading starts and tests can control it more easily.
+> I’ve used all three approaches: firing a load from the ViewModel `init`, triggering it from the UI in a `LaunchedEffect`, and tying it to Flow subscription with `onStart`. 
+> These choices trade off simplicity vs testability. 
+> Lately I prefer either a clearly keyed `LaunchedEffect` from the UI or using Flow’s `onStart` and `stateIn` so it’s obvious when loading starts and tests can control it more easily.
+
+
+
+public open source sdk security
+- follow same best practices as any other sdk
+- expose only readable APIs - paypal 
+- code obfuscation - R8
+- encrypt sensitive data - keystore
+- caching something locally - not safe with an open source app -> need to encrypt it
+  - encryption algorithms - AES, RSA

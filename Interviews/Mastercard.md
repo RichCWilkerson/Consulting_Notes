@@ -99,6 +99,11 @@ Experience with performance tuning and low-level debugging.
 Familiarity with version control systems (Git) and CI/CD pipelines.
 
 
+## Technology
+Bluetooth and NFC are required for the majority of positions
+
+
+
 ## Interviews
 
 ### Round 1
