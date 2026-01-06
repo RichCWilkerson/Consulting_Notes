@@ -4,7 +4,7 @@
 - Kotlin Multiplatform Mobile (KMM)
   - data/network layers shared across iOS and Android
 
-[Read detailed breakdown →](./CrossPlatformMobile.md)
+[Read detailed breakdown →](../PostTraining/CrossPlatform/CrossPlatformMobile.md)
 
 # Team Leadership
 - leading agile teams
@@ -18,7 +18,7 @@
 - memory inefficiencies
 - battery drain issues
 
-[Read detailed breakdown →](./PerformanceOptimization.md)
+[Read detailed breakdown →](../PostTraining/PerformanceTools/PerformanceOptimization.md)
 
 # Security
 - data encryption
@@ -27,7 +27,7 @@
 - biometric authentication
 - compliance with PCI DSS and GDPR
 
-[Read detailed breakdown →](./Security.md)
+[Read detailed breakdown →](../PostTraining/Security/Security.md)
 
 # Data Handling
 - GraphQL
@@ -40,7 +40,7 @@
 - integration testing
 - UI testing with Espresso 
 
-[Read detailed breakdown →](./Testing.md)
+[Read detailed breakdown →](../PostTraining/4_Testing/1_Testing.md)
 
 [Android Developer Crosswalk →](./AndroidDevCrosswalk.md)
 
