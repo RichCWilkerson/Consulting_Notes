@@ -8,6 +8,10 @@
 
 - [Compose - Medium](https://medium.com/@me.zahidul/mastering-android-pagination-with-paging-3-jetpack-compose-9c8bad8ee98f)
 
+- [Official Docs](https://developer.android.com/topic/libraries/architecture/paging/v3-overview)
+  - Note the Paging library is the same thing, Paging 3 is just version 3 of the Paging library.
+    - this version is a huge improvement over version 2 as it is Kotlin-first and coroutine-supported.
+
 # Paging 3
 ## Overview
 - Kotlin-first, coroutine-supported API
@@ -37,17 +41,62 @@ dependencies {
 // source will be grouped with other data sources in the data layer (e.g., network sources, database sources, etc.)
 // can name it /paging/ if preferred separately
 class ImagePagingSource(
-    private val apiService: ApiService
-) : PagingSource<Int, ImageListModel>() {
+    private val apiService: ApiService 
+) : PagingSource<Int, ImageListModel>() { // specify key type (Int for page number) and value type (ImageListModel for data model)
+// PagingSource<Key, Value> -> PagingSource returns a list of Value items based on Key type
 
-    private val numOfOffScreenPage: Int = 4
+    // number of pages to keep in memory for prefetching
+    private val numOfOffScreenPage: Int = 4 
 
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, ImageListModel> {
-        val pageIndex = params.key ?: 1
-        val pageSize = params.loadSize
-        return try {
-            val responseData = apiService.fetchImages(pageIndex, pageSize)
 
+        // default to page 1 if key is null
+        val pageIndex = params.key ?: 1
+
+        // number of items to load, provided in Repository layer or Usecase layer
+        val pageSize = params.loadSize 
+        return try {
+            // NOTE: this requires setting up paging on our server side, if we don't have control over server API,
+            // we may need to implement custom logic to handle pagination based on the API's capabilities.
+            // similar to how we would do it with Room database queries.
+            val responseData = apiService.fetchImages(pageIndex, pageSize) 
+
+            /*
+            // if your server is not set up for paging:
+            val allPosts = userService.getAllPosts()
+
+            // calculate starting index for the current page
+            // we want to start at 0 index for the data for page 1
+            val fromIndex = (pageIndex - 1) * pageSize 
+            
+            // if starting index exceeds total items, return empty page
+            if (fromIndex >= allPosts.size) {
+                return LoadResult.Page(
+                    data = emptyList(),
+                    prevKey = if (pageIndex == 1) null else pageIndex - 1,
+                    nextKey = null
+                )
+            }
+
+            // calculate end index for the current page 
+            // minOf(1, 5) means return the smaller of the two values, here it will return 1
+            // we use this to avoid going out of bounds of the list
+            // either we have page size number of items, or we reach the end of the list
+            val toIndex = minOf(fromIndex + pageSize, allPosts.size)
+            
+            // subList allows us to define a range within the list to return
+            val pageData = allPosts.subList(fromIndex, toIndex)
+
+            // pass the data to successful LoadResult.Page
+            LoadResult.Page(
+                data = pageData,
+                // previous page key, null if on first page, allows for manipulating UI based on prevKey (e.g., disabling prev button)
+                prevKey = if (pageIndex == 1) null else pageIndex - 1, 
+                nextKey = if (toIndex >= allPosts.size) null else pageIndex + 1
+            )
+             */
+            
+            
             LoadResult.Page(
                 data = responseData.body()!!,
                 prevKey = if (pageIndex == 1) null else pageIndex - 1,
@@ -58,8 +107,14 @@ class ImagePagingSource(
         }
     }
 
+    // called when invalidating the PagingSource, used to determine the key for refreshing data
+    // e.g., when user performs swipe-to-refresh action in the UI
     override fun getRefreshKey(state: PagingState<Int, ImageListModel>): Int? {
+        // state is the current paging state including loaded pages and anchor position
+        // anchorPosition is the most recently accessed index in the list
         return state.anchorPosition?.let { anchor ->
+            // closestPageToPosition finds the page closest to the anchor position, at index 23 of pages of size 10, it would be page 3 (items 21-30)
+            // .plus(numOfOffScreenPage) -> we want to refresh starting a few pages before the anchor to ensure smooth UX
             state.closestPageToPosition(anchor)?.prevKey?.plus(numOfOffScreenPage)
                 ?: state.closestPageToPosition(anchor)?.nextKey?.minus(numOfOffScreenPage)
         }
@@ -81,6 +136,7 @@ class ImagePagingSource(
    - Inside the Pager, we define the page size and supply the PagingSource. 
    - The repository doesn’t fetch data directly—it delegates that to the PagingSource’s load method. 
    - The LoadResult return by PagingSource is automatically transformed into PagingData for the UI.
+
 ```kotlin
 class ImageRepositoryImpl @Inject constructor(
     private val apiService: ApiService

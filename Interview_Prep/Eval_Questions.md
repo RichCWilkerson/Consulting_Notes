@@ -1651,10 +1651,11 @@ Compose Lifecycle phases:
 2. Recomposition — It’s the phase when any state changes which eventually impacts the UI, Jetpack Compose smartly identifies those Composables and recomposes only them without the need to update all Composables. 
 3. Leave the Composition — It’s the last phase when the UI is no longer visible so it removes all resources consumed.
 
+[official docs](https://developer.android.com/develop/ui/compose/phases)
 Compose Rendering phases:
-1. Measure — In this phase, Jetpack Compose measures the size and position of each Composable based on the constraints provided by the parent layout. 
-2. Layout — In this phase, Jetpack Compose arranges the Composables on the screen based on the measurements taken in the previous phase 
-3. Draw — In this phase, Jetpack Compose draws the UI on the screen based on the current state of the Composables.
+1. Compose - What UI to show. Compose runs composable functions and creates a description of your UI.
+2. Layout — Where to place UI. This phase consists of two steps: measurement and placement. Layout elements measure and place themselves and any child elements in 2D coordinates, for each node in the layout tree.
+3. Draw — How it renders. UI elements draw into a Canvas, usually a device screen.
 
 > NOTE: Recomposition does not always force measure/layout/draw (if only text content changed and size/constraints are unchanged, only draw may run).
 > If using StateUi (Loading, Success, Error), recomposition will trigger measure/layout/draw as the whole Composable tree is changing.
