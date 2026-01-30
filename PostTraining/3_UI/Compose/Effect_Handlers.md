@@ -1,7 +1,15 @@
+# Resources:
+- [Medium - Beginner's Guide](https://medium.com/@bhoomigadhiya/side-effects-in-jetpack-compose-a-beginners-guide-249ba977e4d2)
+- [Medium - Complete Guide](https://proandroiddev.com/complete-guide-to-side-effects-in-jetpack-compose-5be32b09514a)
+- [Medium - 8 Side Effects](https://medium.com/@manishrana366/the-8-compose-side-effects-every-android-developer-must-master-in-2025-b6b251e9573f)
+
+
 # Effect Handlers
 [Code Lab](https://developer.android.com/codelabs/jetpack-compose-advanced-state-side-effects#0)
 ## Side Effects in Android (Kotlin) - Specific to Coroutines and Jetpack Compose
-Side effects are any operations that touch the outside world or mutate state beyond a function's local variables. 
+Side effects refers to any action that happens beyond the scope of the function. Using side effects in Jetpack Compose involves handling tasks that occur outside of the normal UI rendering process.
+For example, opening a new screen when the user taps on a button is a side effect. This is because the new screen is opened by the operating system, outside of the scope of the composable function that displays the button.
+
 In Android, these are routine but should be isolated and done off the main thread when they involve I/O.
 
 ### Common Android side effects
@@ -85,7 +93,11 @@ fun LoadProfileButton() {
   - Avoid unstable or frequently changing keys to prevent unintended relaunch loops.
   - Prefer ViewModel scopes for long‑lived business logic that must survive configuration changes.
   - If you just need to react after every recomposition without suspend, use SideEffect instead.
-   
+  - Not scoped to the composable function body; it runs independently in its own coroutine. (will not be canceled when composable function leaves composition)
+    - can lead to memory leaks if not used carefully -> use rememberCoroutineScope for running coroutines tied to the composable lifecycle
+
+LaunchedEffect composable is not idempotent. This means that it can produce different results if it is executed multiple times.
+
 ### Code
 ```kotlin
 @Composable
@@ -180,6 +192,7 @@ fun Animation(counter: Int) {
   - firebase user (not a compose state) properties -> need to update the firebase user properties when compose state changes
   - informing imperative UI frameworks (e.g., RecyclerView adapters) of state changes
 
+The SideEffect composable is idempotent, which means that it will always produce the same results, even if it is executed multiple times.
 
 ```kotlin
 @Composable
@@ -193,6 +206,14 @@ fun SideEffectDemo(counter: Int) {
     }
 }
 ```
+
+### SideEffect vs LaunchedEffect
+- SideEffect is for:
+  - non-suspending work that runs after every recomposition.
+  - idempotent operations.
+- LaunchedEffect is for:
+  - launching coroutines that run when keys change or on entering composition.
+  - non-idempotent operations that may have side effects like network calls or database operations.
 
 ---
 

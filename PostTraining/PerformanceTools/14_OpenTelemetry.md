@@ -1,8 +1,36 @@
 # Resources:
 - [Medium](https://horovits.medium.com/observability-for-mobile-with-opentelemetry-2eb847c41941)
 - [Medium](https://medium.com/lumigo/exploring-the-new-frontiers-of-opentelemetry-android-b55979097538)
+  - 
+- [Medium - Ktor Observability](https://medium.com/@shinyDiscoBall/unlocking-observability-2-0-with-ktor-a-practical-guide-to-opentelemetry-integration-97fdda156fda)
+  - more focused on the server side
+
 
 # Telemetry
+
+3 pillars of telemetry: **logs**, **metrics**, and **traces**.
+- Each pillar is a zoom in of a previous one allowing you to drill down and gain more information about the context you were looking at before.
+1. **Metrics**: numerical values that represent data over time (e.g., CPU usage, request count).
+  - Throughput, latency, error or success rates are metrics you would collect to gain basic understanding of performance of an HTTP based service
+    - Any spikes in latency could be an indication of your system working under stress or simply a regression that was introduced with the latest release.
+  - As a developer you are in charge of defining system level indicators and nothing stops you from tracking the booking requests, cart checkouts, user logins, etc. as your business KPIs.
+2. **Traces**: give you more information about the runtime. is a collection of hierarchically arranged spans that measure execution time between two points in your code.
+  - Call to a database or external service, cache refresh, or some complex calculation are good examples of spans your application should be collecting
+  - also support context propagation which means you can gain insights into performance of an external system that a different team in your organisation operates.
+    - You can propagate headers to your message consumers and measure the latency between publishing and delivery
+  - because they are snapshots in time of a single operation, they can be aggregated and drawn on a graph
+    - Now you can directly drill down from these graphs into the traces and gather even more context of what happened under the hood of your application.
+3. **Logs**: allow you to capture human readable and context rich information that is beyond the simple span attributes.
+  - have mostly dynamic structure and do not adhere to any semantic standards
+  - Logs can store anything, from request parameters, all the way to processed entities attributes, results of calculations etc.
+    - difference between a span and a log lies mostly in the purpose
+      - Spans are mostly used to understand the performance, latency, and the dependencies between the services
+      - Logs can be used to capture application state and behaviour over time.
+    - Logs might be helpful to understand why one span was slower than the other. If you log information like the amount of records processed, comparing them with the span length might reveal some potential bottlenecks, e.g. show you that your application scales exponentially.
+
+OpenTelemetry unifies these three pillars under one roof and calls them [signals](https://opentelemetry.io/docs/concepts/signals/)
+- The advantage? Instead of finding a provider for each of the pillars and doing the correlation of events yourself, you get all the tools from one service.
+- it is vendor agnostic, meaning if you decide to host it yourself, you are free to do so.
 
 ## Overview
 - **Telemetry** = collecting measurements about your app **in production**:
@@ -24,6 +52,14 @@
 ## Technologies
 
 You rarely build telemetry from scratch; you integrate SDKs and sometimes add a thin abstraction.
+- technologies to consider for android telemetry:
+    - **Firebase** (Analytics, Crashlytics, Performance Monitoring).
+    - **Sentry** (crash reporting, performance monitoring).
+    - **Datadog** (RUM, logs, traces, metrics).
+    - **Amplitude / Mixpanel / Segment** (product analytics).
+    - **New Relic** (APM, RUM).
+    - **Bugsnag** (crash reporting).
+    - **OpenTelemetry** (open standard for traces, metrics, logs).
 
 Common categories:
 

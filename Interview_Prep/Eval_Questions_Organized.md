@@ -173,6 +173,7 @@ public static <T> T callSupplier(Supplier<T> supplier) {
 
 ```kotlin
 // Kotlin – SAM conversion: lambda used where Supplier<T> is expected
+// callSupplier is the same java function as above
 val greeting: String = callSupplier { "Hello, World!" }
 val answer: Int = callSupplier { 42 }
 val user: User = callSupplier { loadUserFromDb() }
@@ -219,6 +220,7 @@ inline fun performOperation(
   - Let you access the actual type at runtime (`value is T`, `T::class`) despite Java type erasure.
   - Great for type-safe generic helpers, reflection utilities, or factory methods.
 
+
 ```kotlin
 inline fun <reified T> isInstanceOf(value: Any): Boolean {
     return value is T // can check type at runtime
@@ -230,6 +232,60 @@ inline fun <reified T> isInstanceOf(value: Any): Boolean {
 > I mark small higher-order utilities as `inline` when they’re called a lot so I don’t pay the lambda allocation cost and can also use features like reified type parameters. 
 > `crossinline` and `noinline` just refine how inline lambdas behave: `crossinline` disallows non-local returns when the lambda is called later, and `noinline` keeps a particular lambda as a normal function object so I can store or pass it around. 
 > With `reified` generics I can safely do things like `value is T` inside an inline function, which is really useful for type-safe helpers.
+
+---
+
+**Type Erasure**:
+On the JVM, generic type arguments are not preserved at runtime (they are erased). 
+The bytecode typically only sees the raw type (e.g. List instead of List\<String\>).
+
+**How does code know what T is in a generic function?**
+- At compile time the compiler fully knows T and uses it for:
+  - Type checking (e.g. preventing you from passing a List\<Int\> where List\<String\> is expected).
+  - Generating correct calls and casts.
+- At runtime that information is normally gone due to erasure, so:
+  - You cannot do if (value is T) in a normal generic function.
+  - You cannot reflect on the concrete T without extra help (like passing Class\<T\> or KClass\<T\>).
+- Kotlin’s inline fun <reified T> is the main escape hatch: 
+  - because the function is inlined, the compiler can substitute the actual type and keep it in the bytecode, so value is T and T::class are allowed.
+
+**Where does type erasure happen?**
+- Classes, interfaces, and functions with generics all compile down to erased versions:
+  - class Box<T> becomes a raw Box in bytecode, with Object (or a bound) used where T appears.
+  - fun <T> foo(arg: T) becomes a method taking Object (or the upper bound).
+- Upper bounds are respected:
+  - class Box<T : Number> erases T to Number. 
+> So yes, all generic type parameters are subject to erasure on the JVM, with the exception of special cases that embed the type in metadata and are interpreted by libraries (e.g. reflection, some serializers), or Kotlin reified inline helpers.
+
+**What is affected by type erasure?**
+- Overloads:
+  - You cannot overload only by differing generic parameters:
+  - fun process(list: List<Int>) and fun process(list: List<String>) erase to the same JVM signature process(List).
+- is / instanceof checks:
+  - value is List<String> is forbidden / warned, because at runtime only List is known.
+  - You can only reliably check the raw type: value is List<*>.
+- Array creation:
+  - Array<T> is special; you cannot do Array<T>(10) safely without passing the class: java.lang.reflect.Array.newInstance(T::class.java, 10) pattern, or use Kotlin helpers.
+- Reflection / serialization:
+  - Libraries like Gson, Moshi, kotlinx.serialization, Retrofit, etc. need extra information to know T at runtime:
+    - Type tokens (object : TypeToken<List<User>>() {}),
+    - Passing KClass/Class explicitly,
+    - Or using Kotlin-specific reified helpers like inline fun <reified T> fromJson(...).
+
+**What should a senior Kotlin/Java developer know about type erasure?**
+- Design limitations:
+  - Don’t rely on generics for runtime behavior unless you supply explicit type tokens or use reified inline functions.
+  - Avoid APIs that require knowing T at runtime without providing a way to pass it.
+- API compatibility:
+  - Be careful adding generic overloads; due to erasure, they may clash at the JVM level or behave unexpectedly from Java.
+- Interop:
+  - When exposing Kotlin APIs to Java, remember that List<String> and List<Any> both compile to List in bytecode, so extra constraints may come only from annotations (@NotNull, @Nullable) or documentation.
+- Performance and safety:
+  - Generics are mostly a compile-time feature on the JVM: they don’t usually cost at runtime, but they also don’t protect you from all runtime ClassCastExceptions if you lie to the compiler (unchecked casts, raw types).
+- Patterns to work around erasure:
+  - inline fun <reified T> parse(...) style helpers.
+  - Explicit Class<T> / KClass<T> parameters in constructors or factory methods.
+  - Type tokens for complex generic hierarchies where reified is not an option (e.g., non-inline APIs, Java libraries).
 
 ---
 
@@ -457,6 +513,8 @@ When would you use a simple coroutine returning a single value vs a `Flow` retur
 - **Flows**:
   - Good for continuous updates: DB change streams, sensor updates, search input, pagination.
   - Composable with operators like `map`, `filter`, `debounce`, `combine`.
+    - **debounce** = wait for a pause in emissions before sending the latest value
+    - **combine** = merge multiple flows into one by combining their latest values
 
 **Succinct Interview Answer**
 > If I just need a single response—like fetching a user profile—I’ll use a suspend function and return the result directly. 

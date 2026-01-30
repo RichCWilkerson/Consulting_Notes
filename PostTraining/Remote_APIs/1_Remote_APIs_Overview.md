@@ -82,6 +82,7 @@ Android usage:
 ### 2. gRPC
 
 - High‑performance RPC framework built on **HTTP/2 + Protocol Buffers**.
+  - RPC = Remote Procedure Call (client calls methods on server as if local).
 - You define contracts in `.proto` files; tooling generates client/server stubs.
 - On Android often used for **internal or high‑throughput** services.
 
