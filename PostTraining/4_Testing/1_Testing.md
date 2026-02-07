@@ -23,7 +23,7 @@ Layers
 
 ## Integration Testing
 - Android: Robolectric for headless component tests
-  - TODO: what is a headless component test?
+  - a headless component is one that does not have a UI
 - Database: Room/SQLDelight with in-memory drivers; test migrations
   - TODO: what are in-memory drivers?
 - Network: MockWebServer; contract tests for APIs; WireMock for complex flows
@@ -53,8 +53,9 @@ Layers
 - Run unit tests on every PR; UI tests on merge/nightly
   - TODO: are UI tests long and that's why they run on merge/nightly?
 - Fail builds on high-severity lint; track coverage trends (avoid chasing 100%)
-  - TODO: what is high-severity lint?
+  - high-severity lint = you set the severity in your lint file, high-severity would be something you don't want to go to production (e.g. TODO)
   - TODO: what is a good coverage percentage to aim for?
+    - 80%, but the coverage is only as good as the tests being run
 - Generate artifacts: videos/screens for failed UI tests; HTML reports
   - TODO: are we saying to record videos of replicating failed UI tests?
 
@@ -63,6 +64,7 @@ Layers
   - write a test that fails before the fix and passes after
 - Public API changes require tests and docs updates
 - Performance-sensitive logic gets microbenchmarks
+  - these can be ran in CI pipelines to ensure that any changes do not impact performance 
 
 ---
 

@@ -82,20 +82,15 @@ assertThat(exception).hasMessageThat().contains("boom")
 
 ---
 
-## 4) Mockito Basics (Kotlin-friendly)
+## 4) Mockito vs MockK Basics (Kotlin-friendly) 
 
 - Create mocks:
 ```kotlin
-//import org.mockito.kotlin.mock
 val api: PokemonApi = mock()
 ```
 
 - Stubbing and verification:
 ```kotlin
-//import org.mockito.kotlin.whenever
-//import org.mockito.kotlin.verify
-//import org.mockito.kotlin.times
-
 whenever(api.getPokemon("pikachu")).thenReturn(Pokemon("pikachu"))
 val result = api.getPokemon("pikachu")
 verify(api, times(1)).getPokemon("pikachu")
@@ -108,18 +103,18 @@ runTest {
 }
 ```
 
+TODO: add MockK examples and differences
+
+
 Tip: Prefer constructor injection in your production code so you can pass mocks/fakes easily.
 
 ---
 
-## 5) Coroutines & Flow Testing
+## 5) Coroutines & Flow Testing with Mockito vs MockK
 
+### Mockito
 - Use `kotlinx-coroutines-test`:
 ```kotlin
-//import kotlinx.coroutines.test.runTest
-//import kotlinx.coroutines.test.StandardTestDispatcher
-//import kotlinx.coroutines.test.UnconfinedTestDispatcher
-
 @RunWith(MockitoJUnitRunner::class)
 class ExampleTest {
     @Test
@@ -145,9 +140,13 @@ fun stateFlow_emits_expected_states() = runTest {
 
 - If your ViewModel launches on `viewModelScope`, prefer injecting a `CoroutineDispatcher` and using it in your code (e.g., `withContext(io)`), then provide a TestDispatcher in tests.
 
+### MockK
+TODO: add examples here - highlight differences, MockK has better support for coroutines
+
 ---
 
 ## 6) Network Client Testing (Retrofit) with MockWebServer
+TODO: is MockWebServer using mockito or mockK or is it independent and can be used with either?
 
 Goal: Verify your Retrofit service parses responses and hits correct paths.
 
@@ -163,13 +162,6 @@ data class Pokemon(val name: String)
 
 ```kotlin
 // Test using MockWebServer
-//import okhttp3.mockwebserver.MockResponse
-//import okhttp3.mockwebserver.MockWebServer
-//import retrofit2.Retrofit
-//import retrofit2.converter.gson.GsonConverterFactory
-//import com.google.common.truth.Truth.assertThat
-//import kotlinx.coroutines.test.runTest
-
 class PokemonApiTest {
     private val server = MockWebServer()
 
@@ -204,7 +196,8 @@ class PokemonApiTest {
 
 ---
 
-## 7) Repository Testing (combining DAO + API)
+## 7) Repository Testing (combining DAO + API) 
+TODO: is there a difference with MockK?
 
 Approach:
 - Mock both API and DAO. Test repository logic (merging, caching, errors).
@@ -262,17 +255,14 @@ class PokemonRepositoryTest {
 ---
 
 ## 8) Room Testing Options (Mock vs In-memory with Robolectric)
-
+- TODO: does MockK make a difference here?
 You have two unit-test-friendly options:
 
 A) Purely mock the DAO interfaces (fastest, isolates repository logic). Recommended for most repository tests.
 
 B) Use an in-memory Room DB with Robolectric (verifies queries, relations, migrations):
+- TODO: what is in-memory - like actual database with real data? or fake data?
 ```kotlin
-//import androidx.room.Room
-//import androidx.test.core.app.ApplicationProvider
-//import org.robolectric.annotation.Config
-
 @Config(sdk = [34])
 class PokemonDaoTest {
     private lateinit var db: AppDatabase
@@ -306,6 +296,7 @@ Notes:
 ---
 
 ## 9) ViewModel + Use Case Testing
+- TODO: does MockK change anything here?
 
 Strategy:
 - Inject a TestDispatcher into ViewModel/use-cases.
@@ -371,6 +362,7 @@ For LiveData-based ViewModels:
 ---
 
 ## 10) Best Practices & Checklist
+TODO: does MockK vs Mockito change any of these best practices?
 
 - Keep unit tests small, fast, and isolated. Prefer constructor injection to pass fakes/mocks.
 - Write tests at the seam: mock boundaries (network/DB) to test your logic, use in-memory Room only when you need to verify SQL.
@@ -389,6 +381,8 @@ From the terminal at project root:
 ```bash
 ./gradlew test
 ```
+TODO: add example of running a specific test or suite of tests from the terminal
+
 Or from Android Studio: right-click test class/method → Run.
 
 ---
@@ -431,11 +425,3 @@ Flow + Turbine:
     }
 }
 ```
-
----
-
-Notes you had before (updated):
-- Use JUnit4, Truth, Mockito, Turbine; Robolectric only when Android SDK behavior is needed (e.g., Room tests on JVM).
-- Hilt: for JVM unit tests, prefer constructor injection and manual wiring in tests. Reserve `@HiltAndroidTest` for instrumented tests.
-- Naming tests: `methodName_state_expectedBehavior` or backticked natural language.
-- Cleanup in `@After`: close DBs, stop MockWebServer, etc.

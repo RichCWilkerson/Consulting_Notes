@@ -312,10 +312,12 @@ class AuthValidatorTest {
   - Fix by using virtual time (`runTest`), fakes, and stable test data.
 - **Over-mocking**
   - Tests that mirror implementation instead of behavior.
+    - TODO: what's an example of implementation instead of behavior?
   - Favor fakes and domain-focused assertions.
 - **Slow UI/E2E tests**
   - Huge suites that run on every PR.
   - Keep a small **smoke suite** for PRs and run the full suite on schedule.
+    - TODO: how do you specify a suite for CI? just running the `./gradlew test test-suite-name`?
 - **Ignoring Kotlin coroutines/Flow specifics**
   - Not using `kotlinx-coroutines-test`, leading to flaky timing issues.
 - **Not testing error paths**
@@ -352,4 +354,8 @@ class AuthValidatorTest {
 
 7. How would you test Android app features end-to-end to ensure UI behaves correctly during user interactions, including orientation changes and back navigation? 
 
+> TODO
+
 8. How do you test the domain and repository layers in an Android app to ensure high code coverage and proper handling of Kotlin coroutines or Flow?
+
+> TODO

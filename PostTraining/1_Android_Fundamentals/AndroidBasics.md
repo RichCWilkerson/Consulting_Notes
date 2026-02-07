@@ -39,6 +39,7 @@
 class MainActivity : ComponentActivity() {
     private val viewModel = myViewModel() // this will be recreated on configuration change, instead use:
     private val viewModel by viewModels<myViewModel>() // this will retain the same instance across configuration changes
+    // TODO: why does using the delegate by retain the same instance? what happens behind the scenes?
 }
 
 // two ways to get view model instance inside a composable:
@@ -71,6 +72,7 @@ class myViewModel: ViewModel() {
 ```
 
 # Context
+TODO: need to use gpt to polish the Context section
 - in android it is nothing more than an instance of a class
 - a bridge between your android app and the android system (e.g., phone hardware, resources, etc.)
 - provides your app to operate within the whole android ecosystem
@@ -80,7 +82,7 @@ class myViewModel: ViewModel() {
 - Context is a superclass of Activity and Application classes
   - Context has the same lifecycle as the application or activity it is associated with
   - this can lead to memory leaks if not handled properly (meaning holding a reference to a context longer than its lifecycle -> resources not being freed up)
-    - if you save the context from an activity inside a view model, the view model will outlive the activity and the context will not be freed up when the activity is destroyed
+    - if you save an activity context inside a view model, the view model could outlive the activity and the context will not be freed up when the activity is destroyed
     - to avoid this, use application context instead of activity context when saving context in a view model
       - application context has the same lifecycle as the application, so it will not lead to memory leaks
       - mostly prefer not to use context in view models, but if you have to, use application context
@@ -171,6 +173,12 @@ class MainActivity : ComponentActivity() {
   - Google Play Store enforces permission policies to protect user data
   - an app shouldn't request more permissions than necessary for its core functionality
 
+## List of popular Intents and Permissions
+TODO: list popular explicit and implicit intents
+TODO: list popular permissions and what they do -> or link to my ./Permissions.md file
+
+## Examples
+
 ```kotlin
 class MainActivity : ComponentActivity() {
     
@@ -181,12 +189,13 @@ class MainActivity : ComponentActivity() {
         
       // EXPLICIT INTENT EXAMPLE
         // first param is context (can be this activity or application context)
+        // TODO: does it make a difference if it's activity or app context? does it change the memory leakage or anything?
         // second param is the target activity class
         val explicitIntent = Intent(this, SecondActivity::class.java)
         startActivity(explicitIntent)
         // Intent(this, SecondActivity::class.java).also { startActivity(it) } // alternative way
         
-      // IMPICIT INTENT EXAMPLE
+      // IMPLICIT INTENT EXAMPLE
         // param is the action to be performed
         // now any app that can handle this action can respond, user can select which app to use
         val implicitIntent = Intent(Intent.ACTION_VIEW).apply {

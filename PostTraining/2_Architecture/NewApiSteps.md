@@ -446,7 +446,7 @@ interface ApiRepository {
   suspend fun fetchPersons(): List<Person>
   suspend fun fetchPosts(): List<Post>
   // TODO: why not suspend here?
-  // Answer: Because PagingData is a stream of data that emits multiple values over time.
+  // Answer: Because PagingData is a stream of data (Flow) that emits multiple values over time.
   fun pagedPersons(): Flow<PagingData<Person>> 
 }
 

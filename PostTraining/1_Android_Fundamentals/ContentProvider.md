@@ -1,3 +1,5 @@
+# Resources:
+[Phillip Lackner - Youtube]() TODO: find the youtube video
 
 # Content Providers
 Content Providers in Android are a fundamental component that allows applications to share data with other applications securely. They act as an intermediary between the data source and the application, providing a standard interface for accessing and manipulating data.

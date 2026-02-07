@@ -79,6 +79,8 @@
 <uses-feature android:name="android.hardware.camera.any" />
 <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
 ```
+- TODO: `uses-feature` is specifically for?
+
 
 ### 2. Request at runtime (Activity/Fragment)
 - Classic pattern (pre-Activity Result APIs):
@@ -105,9 +107,12 @@ private val cameraPermissionLauncher = registerForActivityResult(
 }
 
 fun onCameraButtonClicked() {
+    // TODO: what does this do? launch with Manifest file?
     cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
 }
 ```
+
+TODO: it doesn't need to go here, but i was thinking about where permission functions live. I would assume it's best to create a directory in the domain layer or create a feature-module to house all permissions to share across whichever features need it to reduce duplication if it comes up. 
 
 ### 3. Request in Jetpack Compose
 - Use `rememberLauncherForActivityResult` inside a composable and delegate the actual action back to a ViewModel or callback:
@@ -116,6 +121,8 @@ fun onCameraButtonClicked() {
 fun CameraButton(onCameraReady: () -> Unit) {
     val context = LocalContext.current
 
+    // TODO: ActivityResultContracts is a class i create? and RequestPermission is a function i create? 
+    // TODO: what would those classes or functions look like?
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -125,13 +132,15 @@ fun CameraButton(onCameraReady: () -> Unit) {
     }
 
     Button(onClick = {
+        // TODO: explain each of these lines, what is ContextCompat, etc.?
         if (ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.CAMERA
+                context, // TODO: is this app or activity context?
+                Manifest.permission.CAMERA // we are passing in the permission we want to check in the Manifest file? or is this checking if the permission is already granted? are granted permissions stored on device or do we need to keep track?
             ) == PackageManager.PERMISSION_GRANTED
         ) {
             onCameraReady()
         } else {
+            // TODO: does this automatically launch a ui to ask for the permission? or do i need to design it?
             launcher.launch(Manifest.permission.CAMERA)
         }
     }) {
@@ -145,7 +154,8 @@ fun CameraButton(onCameraReady: () -> Unit) {
   - Show a **rationale** before re-requesting: explain why you need it.
   - Use `shouldShowRequestPermissionRationale()` to detect when to show rationale.
 - If user selects “Don’t ask again” / permanently denies:
-  - Guide them to **Settings** with a clear explanation.
+  - Now if a user wants the functionality you need to guide them to **Settings** with a clear explanation.
+    - cannot use ask permission again
 
 ---
 
