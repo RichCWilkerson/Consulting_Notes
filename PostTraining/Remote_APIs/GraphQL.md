@@ -10,7 +10,7 @@
 [final source code](https://www.youtube.com/redirect?event=video_description&redir_token=QUFFLUhqbXBIWGRRTXRLMXBQcWlyUUx5aF96N3FsNVpGUXxBQ3Jtc0tuYVl6U0hqcDBNdjdjbU1xY0UzN2hiY2w0WjRNZVFYanRNbUoyMGRlQ19IZ193LW4zRDQzYkhzRzVtTk9OazF1YjB3Zl93bmxEdFdoZEhPMEh6MlE5RElCczFLMTdzaHVDSUxZY1V0QVJ5ZURVUFNVWQ&q=https%3A%2F%2Fgithub.com%2Fphilipplackner%2FGraphQlCountriesApp&v=ME3LH2bib3g)
 
 
-
+ACTP - protocol = 
 
 # GraphQL Basics
 **QUERY** = read only
@@ -48,6 +48,11 @@
     - Business rules (validation errors in errors array).
   - Map these to your domain-level error model and expose via ViewModel state.
 
+
+> NOTE: In GraphQL the `User` type can expose relationships to other types that live in separate tables/services, not just a single table.
+
+> NOTE: Subscriptions shine for real‑time experiences like order tracking, live balance, or notification streams. 
+> In an e‑commerce context they’re used selectively to avoid unnecessary WebSocket connections and battery usage.
 
 REST Limitations:
 - **Overfetching/underfetching** – REST endpoints often return fixed payloads; the client may get more data than it needs or need multiple calls to assemble one screen.
@@ -116,6 +121,12 @@ How GraphQL solves these issues:
 - Many real systems are hybrid:
     - REST for infra/utility calls and some legacy services.
     - GraphQL for rich, client\-driven product data where overfetching/underfetching are real problems.
+
+**Data Responses and Errors require different handling than REST**
+- In REST, a `4xx` or `5xx` status code indicates an error; the response body is often an error message.
+- In GraphQL, the HTTP status is usually `200 OK` even if there are errors; the response body contains both `data` and `errors` fields.
+    - `data`: the requested data (may be partial or null).
+    - `errors`: an array of error objects with messages, locations, and paths.
 
 **Caching is different from REST**
 - REST often leverages **HTTP caching** with status codes and headers (`ETag`, `Cache\-Control`, etc.).
@@ -849,3 +860,90 @@ object AppModule {
 > - Repositories hide whether you use GraphQL or REST.
 > - DI (Hilt) wires up `ApolloClient`, repository, and use cases.
 > - Auth headers are usually added via an OkHttp interceptor; for learning, you can stub or skip them.
+
+
+
+
+
+
+
+
+
+
+
+
+---
+
+## Additional:
+
+
+### Auth with OkHttp Interceptor with Apollo
+```kotlin
+val okHttpClient = OkHttpClient.Builder()
+    .addInterceptor { chain ->
+        val original = chain.request()
+        val token = tokenProvider.currentAccessToken()
+        val newReq = original.newBuilder()
+            .apply {
+                if (!token.isNullOrEmpty()) {
+                    header("Authorization", "Bearer $token")
+                }
+                header("X-Telemetry-Id", telemetryIdProvider.id())
+            }
+            .build()
+        chain.proceed(newReq)
+    }
+    .build()
+
+val apolloClient = ApolloClient.Builder()
+    .serverUrl("https://api.example.com/graphql")
+    .okHttpClient(okHttpClient)
+    .build()
+```
+
+
+### Responses, Errors, and Retries
+- HTTP status may be `200` even if there are field‑level errors. 
+- You can have partial success: some fields in `data`, some errors in `errors`. 
+- For auth/transport issues:
+  - Servers often still use HTTP 401/403/500, same as REST.
+- GraphQL requires inspecting both HTTP status and the `errors` array in the response body in order to determine the overall result.
+
+```json
+{
+  "data": {
+    "me": { "id": "123", "email": "a@b.com" }
+  },
+  "errors": [
+    {
+      "message": "Some field error",
+      "path": ["me", "email"],
+      "extensions": { "code": "FORBIDDEN" }
+    }
+  ]
+}
+```
+
+Network‑level failures (timeouts, 5xx, no connectivity):
+- Handled similarly to REST: automatic or manual retry with backoff.
+- OkHttp interceptors or Apollo’s error types can feed a retry policy.
+
+GraphQL `errors` array:
+- Often includes a domain error code in `extensions.code` (e.g., `UNAUTHENTICATED`, `FORBIDDEN`, `RATE_LIMITED`, `VALIDATION_FAILED`).
+- These are usually not good candidates for blind retry:
+  - Validation errors → don’t retry, show error to user.
+  - Forbidden/unauthenticated → refresh token or re‑login.
+  - Rate limited → maybe retry with server‑provided `retryAfter`.
+
+So you want a mapping layer in the data layer that:
+- Examines:
+  - HTTP status (from OkHttp or Apollo).
+  - GraphQL errors and extensions.
+- Maps them to:
+  - `NetworkError.Timeout`, `NetworkError.NoConnection`.
+  - `AuthError.ExpiredToken`, `AuthError.Forbidden`.
+  - `BusinessError.Validation`, etc.
+- The ViewModel decides whether to:
+  - Retry, show “Try again”, or redirect to login.
+
+

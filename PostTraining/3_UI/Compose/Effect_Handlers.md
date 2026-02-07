@@ -225,8 +225,8 @@ fun SideEffectDemo(counter: Int) {
   - Choose keys that uniquely identify what’s being managed so disposal/re‑setup happens correctly.
   - To avoid stale captures in callbacks, prefer capturing latest values via stable references (e.g., rememberUpdatedState in surrounding code), not by re‑creating listeners every recomposition.
 
-- works like LaunchedEffect but for non-coroutine side effects that need cleanup 
-- What needs to be disposed of?
+- works like LaunchedEffect but for non-coroutine side effects that need cleanup
+- What needs to be disposed of?`
   - listeners (e.g., location updates, sensor updates, broadcast receivers)
   - resources (e.g., camera, microphone, file handles)
   - anything that needs to be cleaned up to avoid memory leaks or unnecessary resource usage
