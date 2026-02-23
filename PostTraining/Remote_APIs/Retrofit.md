@@ -3,10 +3,13 @@
 - [OkHttp – Square Docs](https://square.github.io/okhttp/)
 - [Moshi – JSON library](https://github.com/square/moshi)
 - [Gson – JSON library](https://github.com/google/gson)
+- [Example Project - Medium](https://medium.com/deuk/master-network-calls-and-modern-ui-in-android-compose-guide-to-the-networkcalldemoapp-4b59f80e1216)
 
 ---
 
 # Retrofit Overview
+
+endpoints, converters, and adapters
 
 Retrofit is a **type‑safe HTTP client for Android and Java** built on top of OkHttp.
 

@@ -4,6 +4,8 @@
 
 - [Official Room docs](https://developer.android.com/training/data-storage/room)
 - [Room Kotlin samples](https://github.com/android/architecture-components-samples)
+- [TODO App - Medium](https://medium.com/deuk/intermediate-android-compose-todo-app-with-room-database-18fd97436c6d)
+  - walkthrough of building an app with Room
 
 ---
 

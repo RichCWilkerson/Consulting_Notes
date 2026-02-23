@@ -1,5 +1,6 @@
 # Resources:
 [KMP Testing](https://www.youtube.com/watch?v=tAMu-RPqkok&list=PLQkwcJG4YTCS55alEYv3J8CD4BXhqLUuk&index=6)
+[Todo App - UI Testing with Compose](https://medium.com/deuk/android-compose-tutorial-todo-app-with-ui-testing-af1a68db6925)
 
 
 # Testing
@@ -10,6 +11,8 @@
   - Fewer **integration tests** (Android components, DB + network wiring).
   - A small number of **UI / end-to-end tests** for critical flows.
 - Goal: catch regressions early, enable safe refactors, and keep release confidence high.
+
+TODO:  integrating tools like Jacoco for test coverage analysis, next enhance your approach by incorporating tools like SonarQube for static code analysis. This step is about complementing your test coverage data with insights on code quality and maintainability.
 
 ---
 
@@ -75,6 +78,8 @@ Unit tests focus on **small pieces of logic in isolation**, with their dependenc
    - Supports mocking final classes, extension functions, coroutines, etc.
 4. **kotlinx-coroutines-test**
    - Official library for testing coroutines (`runTest`, `StandardTestDispatcher`, virtual time).
+   - might need a shadow of the looper to test code that uses `Dispatchers.Main` in unit tests, or you can use `Dispatchers.setMain` to set a test dispatcher.
+     - can you go more into the shadow of the looper? this is new to me. what is this?
 5. **Turbine**
    - Library for testing Kotlin `Flow` emission sequences in a concise way.
 
@@ -238,6 +243,7 @@ class LoginActivityTest {
 ```
 
 ### Example: Compose UI test
+- TODO: add example with semantics and test tags, and how to handle state changes and side effects in compose tests.
 ```kotlin
 @get:Rule
 val composeTestRule = createComposeRule()

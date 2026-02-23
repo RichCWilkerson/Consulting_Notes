@@ -1,4 +1,7 @@
 
+TODO: how is this achieved? Support hotfix builds and expedited Play Store releases
+
+
 
 # Google Play Store
 
@@ -8,11 +11,14 @@
 - remove unused resources and code
 - optimize images and other assets
 
-## Bundles vs APKs
-- bundle has all resources for all device configurations (eg. screen sizes, languages, watch vs phone)
-- APK is a single package for a specific device configuration
-- when you upload a bundle, Google Play generates and serves optimized APKs for each device configuration
-- this reduces the app size for users, as they only download what they need
+## APKs vs AABs (Android App Bundles)
+- APK (Android Package) is the traditional format for distributing Android apps
+  - APK is a single package for a specific device configuration
+
+- AAB (Android App Bundle) is a newer format that allows for more efficient distribution
+  - bundle has all resources for all device configurations (eg. screen sizes, languages, watch vs phone)
+  - when you upload a bundle, Google Play generates and serves optimized APKs for each device configuration
+    - this reduces the app size for users, as they only download what they need
 
 ### Generate Signing Key (.jks)
 - In Android Studio, go to Build > Generate Signed Bundle / APK

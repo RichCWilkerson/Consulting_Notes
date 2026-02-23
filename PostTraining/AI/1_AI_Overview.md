@@ -1,4 +1,15 @@
+# Resources:
+- [Integrating Gemini API - Medium](https://medium.com/deuk/integrating-gemini-api-for-text-generation-in-android-compose-a161f605f93e)
+
 ## AI
+integrate ML Kit - beginner friendly with pre-trained models for common tasks (text recognition, face detection, etc.)
+- [github repo](https://github.com/googlesamples/mlkit/tree/master/android/vision-quickstart)
+next, TensorFlow or TensorFlow Lite - more control, custom models, on-device inference
+- [Google Play's Dynamic Delivery](https://developer.android.com/guide/playcore/feature-delivery)
+  - dynamically downloading models as needed. This step optimizes your app’s performance and user experience by minimizing its initial download size and enabling scalable ML feature delivery.
+
+
+
 [Documentation](https://developer.android.com/ai/gemini/developer-api)
 [Task](https://developer.android.com/courses/pathways/android-ai-overview)
 [Getting Started with Firebase SDK](https://firebase.google.com/docs/vertex-ai/get-started?platform=android)

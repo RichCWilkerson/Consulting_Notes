@@ -1,3 +1,9 @@
+# Resources: 
+- [Essential Security Practices - Medium](https://medium.com/deuk/android-app-defense-essential-security-practices-for-developers-8ed905a026ea)
+- [Android Credential Manager - Developers](https://developer.android.com/identity/credential-manager)
+  - Simplifies the sign-in and sign-up processes by automating credential storage and retrieval
+  - offering a more secure alternative to manual credential handling or local storage methods, which are susceptible to security breaches.
+
 # Mobile Security — Detailed Breakdown
 
 Goal: Protect user data and app integrity; comply with regulations.
@@ -5,12 +11,19 @@ Goal: Protect user data and app integrity; comply with regulations.
 Areas
 - Data encryption
 - OAuth2 and JWT
-- Biometric authentication
+- [Biometric authentication](https://developer.android.com/identity/sign-in/biometric-auth)
 - Compliance (PCI DSS, GDPR)
+
+API Keys
+- Hardcoding API keys in source code or including them in version control systems exposes them to the risk of unauthorized access. Instead, Android developers should use approaches like BuildConfig and local.properties files to inject API keys into their applications dynamically.
+- Using separate keys for different environments (development, testing, production) also minimizes the risk of exposure and limits the potential damage if a key is compromised.
 
 ---
 
 ## Data Encryption
+
+TODO: add UUID / idempotency keys to this file where they would fit in. context of android is to general. need to pass the idempotency key in the header of the request, and generate a new one for each request. this is to prevent duplicate requests from being processed by the server. the UUID can be used as a unique identifier for the user or device, and can be stored securely in the Keystore/Keychain.
+
 At Rest
 - Android: EncryptedSharedPreferences, SQLCipher/Room with SafeRoom, File encryption APIs
   - TODO: what are each of these? when to use which? where do you implement them (data layer)?

@@ -1,3 +1,7 @@
+
+- [Compose Tracing - Developers](https://developer.android.com/develop/ui/compose/tooling/tracing)
+  - not sure where this goes or if I have it covered somewhere else.
+
 # Resources:
 The suggested learning order is from top to bottom.
 This overview page should be read first to provide context and overview of performance tools in Android.

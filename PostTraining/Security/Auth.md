@@ -1,6 +1,11 @@
 # Android Authentication & Security Overview
 
-[cleartext doc](https://developer.android.com/privacy-and-security/risks/cleartext-communications#:~:text=Allowing%20cleartext%20network%20communications%20in,numbers%2C%20or%20other%20personal%20information)
+- [cleartext doc](https://developer.android.com/privacy-and-security/risks/cleartext-communications#:~:text=Allowing%20cleartext%20network%20communications%20in,numbers%2C%20or%20other%20personal%20information)
+- [medium - hardware security](https://proandroiddev.com/your-app-is-secure-but-is-the-device-android-hardware-attestation-explained-e9a531312035)
+
+
+playstore integrity that checks that the OS and app have not been tampered with. This is done through cryptographic signatures that are verified at runtime.
+
 
 
 there is an interface in Java, 
