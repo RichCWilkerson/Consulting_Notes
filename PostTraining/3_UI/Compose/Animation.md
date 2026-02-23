@@ -1,10 +1,9 @@
 # Resources:
-- [Snapping Effects - Medium](https://medium.com/deuk/android-compose-ux-techniques-implementing-snapping-effects-with-lazyrow-2c3fae9e3db1)
-- [Animated Dynamic Tab Selector - Medium](https://medium.com/deuk/android-task-app-implementation-series-animated-dynamic-tab-selector-df241d3b5543)
-- [Build Dynamic Bank Card - Medium](https://medium.com/deuk/intermediate-android-compose-bank-card-ui-371d14ea7843)
-- [Custom Circular Progress Bar - Medium](https://medium.com/deuk/intermediate-android-compose-tutorial-building-a-custom-circular-progress-bar-88d316963a57)
+
 
 # Animation in Jetpack Compose
+
+TODO: Vulkan - new, vs OpenGL - legacy
 
 Compose provides a range of animation APIs, from simple state-based animations to complex gesture-driven motion.
 
@@ -60,61 +59,34 @@ Notes:
 - Blocking the main thread in animation callbacks.
 - Confusing UX from conflicting gestures and animations.
 
-### Avoid unnecessary recompositions
-- Use `remember` to store animation state that shouldn't reset on recomposition.
-- State should not be read inside the composable function -> will cause recomposition and restart animation -> causes performance issues and janky animations
-
-- graphicsLayer is a modifier that allows you to apply transformations (like rotation, scaling, translation) directly to the composable without affecting its layout. This can help avoid unnecessary recompositions when animating properties like rotation, as the animation state is managed within the graphicsLayer instead of the composable itself.
-  - this only fixes recompositions related to the drawing phase of composables, not those related to layout or measurement phases. So if your animation affects layout (e.g., changing size, position, etc.), you may still encounter recompositions.
-```kotlin
-@Composable
-fun RotatingIcon() {
-    Icon(
-        imageVector = Icons.Default.Refresh,
-        contentDescription = "Loading",
-        modifier = Modifier
-            .size(48.dp)
-            .graphicsLayer {
-                rotationZ = remember { Animatable(0f) }.value // add rotation state to graphicsLayer to avoid recomposition of entire composable
-            }
-            .rotate(remember { Animatable(0f) }.value) // remove rotation state from composable to avoid recomposition of entire composable
-    )
-        Text("Loading...")
-}
-```
-
 Use this section to accumulate real-world gotchas as you encounter them.
 
 
-# Common animation patterns
-## Rotating animation
+
+
+# Additional Notes to Add
+- For animations or fast-updating states, we rely on lambdas for modifiers affecting sizes, offsets, or any graphics layer.
 
 ```kotlin
+// Don't
+// This will recompose for each tick of the alpha animation
 @Composable
-fun RotatingLoadingArrow(){
-    val infiniteTransition = rememberInfiniteTransition()
-    val rotation by infiniteTransition.animateFloat(
-        initialValue = 0f, // Start at 0 degrees
-        targetValue = 360f, // Rotate full circle to 360 degrees
-        animationSpec = infiniteRepeatable( // Repeat indefinitely
-            animation = tween(1000, easing = LinearEasing) // Rotate over 1 second with linear easing (constant speed)
-        )
-    )
+fun SomeComponent() {
+  val alpha by animateFloatAsState(0.5f)
+  
+  Box(modifier = Modifier.alpha(alpha)) {
+    // [...]
+  }
+}
 
-    Icon(
-        imageVector = Icons.Default.ArrowUpward,
-        contentDescription = "Loading",
-        modifier = Modifier.rotate(rotation)
-    )
+// Do
+// This will only redraw
+@Composable
+fun SomeComponent() {
+  val alpha by animateFloatAsState(0.5f)
+  
+  Box(modifier = Modifier.graphicsLayer { this.alpha = alpha }) {
+    // [...]
+  }
 }
 ```
-
-
-## Fading animation
-
-## Scaling animation
-
-## Sliding animation
-
-
-TODO: ect.
