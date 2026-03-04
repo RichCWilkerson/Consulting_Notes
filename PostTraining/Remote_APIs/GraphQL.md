@@ -10,6 +10,9 @@
 [final source code](https://www.youtube.com/redirect?event=video_description&redir_token=QUFFLUhqbXBIWGRRTXRLMXBQcWlyUUx5aF96N3FsNVpGUXxBQ3Jtc0tuYVl6U0hqcDBNdjdjbU1xY0UzN2hiY2w0WjRNZVFYanRNbUoyMGRlQ19IZ193LW4zRDQzYkhzRzVtTk9OazF1YjB3Zl93bmxEdFdoZEhPMEh6MlE5RElCczFLMTdzaHVDSUxZY1V0QVJ5ZURVUFNVWQ&q=https%3A%2F%2Fgithub.com%2Fphilipplackner%2FGraphQlCountriesApp&v=ME3LH2bib3g)
 
 
+- [GraphQL Kotlin Docs](https://www.apollographql.com/docs/kotlin#android-studio-intellij-plugin)
+  - this is your best source 
+
 ACTP - protocol = 
 
 # GraphQL Basics
@@ -334,12 +337,13 @@ query GetCountries {
 # Walkthrough:
 - only things you need for GraphQL
 1. Gradle setup
-2. Schema
-3. Queries
-4. Data layer (Domain and UI will be same to REST)
-5. DI (Apollo client and repository implementation)
+2. Create the graphql directory under app/src/main/graphql
+3. Schema
+4. Operations: Queries, Mutations, Subscriptions
+5. Data layer (Domain and UI will be same to REST)
+6. DI (Apollo client and repository implementation)
 
-## Gradle Setup
+## 1. Gradle Setup
 NOTE: apollo not easy to setup for gradle groovy DSL, recommend using kotlin DSL instead
 - add apollo plugin to build.gradle (project level)
 - add apollo plugin to build.gradle (app level)
@@ -350,33 +354,150 @@ NOTE: apollo not easy to setup for gradle groovy DSL, recommend using kotlin DSL
 ```kotlin
 // :app build.gradle
 plugins {
-    id("com.apollographql.apollo3").version("4.0.0")
+  id("com.apollographql.apollo") version "4.4.1"
 }
 //
 apollo {
     service("countries") {
-        // this is where the graphql endpoints are defined
-        packageName.set("com.example.graphqlcountriesapp")
+        // Point packageName at the Kotlin package where you want Apollo’s *generated* classes to live.
+        // Use your app’s root namespace, plus a subpackage for generated GraphQL code.
+        packageName.set("com.example.graphqlexample.graphql")
+        // purpose: 
+        //  1. *typed client code* derived from your schema and .graphql operations
+        //  2. **Type safety**: generates Kotlin types for operation variables, responses, enums, input objects, etc., so you don’t manually parse JSON.
+        //  3. **Runtime integration**: generates the Query/Mutation classes and adapters the Apollo runtime uses to serialize variables and deserialize responses.
+        //  4. **Compile-time validation**: your operations are checked against the schema during the build, catching missing fields/wrong types early.
+        //  5. **Convenient API surface**: you call the generated operation classes from your app code (instead of building requests by hand).
+      
+        // other options:
+        // schemaFile.set(file("src/main/graphql/schema.graphqls")) // if you have a local schema file, point to where it lives
+        // endpointUrl.set("https://countries.trevorblades.com/") // if you want to fetch the schema from the endpoint instead of downloading it manually, set the endpoint URL here
     }
 }
 dependencies {
-    // required for apollo
-    implementation("com.apollographql.apollo3:apollo-runtime:4.0.0")
-    // optional - for caching
-    implementation("com.apollographql.apollo3:apollo-normalized-cache-sqlite:4.0.0")
+  implementation("com.apollographql.apollo:apollo-runtime:4.4.1")
+  // Optional: if you want to use the normalized cache
+  implementation("com.apollographql.apollo:apollo-normalized-cache-sqlite:4.4.1")
+  // Optional: if you just want the generated models and parsers and write your own HTTP code/cache code, you can remove apollo-runtime
+  // and use apollo-api instead
+  implementation("com.apollographql.apollo:apollo-api:4.4.1")
 }
 ```
 
-## Schema
+## 2. Create the graphql directory under app/src/main/graphql
+- if you have the apollo plugin for android studio, it will provide an option for creating this directory when you click create new directory
+- this directory is where we put all the .graphqls schema files and .graphql query/mutation/subscription files
+- NOTE: in your build.gradle.kts the packageName.set("com.example") will determine the package name for the generated models based on the location of the .graphql files under this directory
+
+## 3. Schema
 - We also need a schema
   - go to the countries API page -> click on the Schema tab (schema definition) on the left drawer -> grab the https link
   - or you can download the schema as a .graphqls file
   - or: use the CLI `./gradlew :app:downloadApolloSchema --endpoint="https://countries.trevorblades.com/" --schema="src/main/graphql/com/example/graphqlcountriesapp/schema.graphqls" --service="countries"`
     - this will generate a new schema file in the specified location
 
-## Queries / Mutations / Subscriptions
+- If you are building your own backend, you will need to define your own schema in SDL (Schema Definition Language) and implement resolvers for it.
+- And then create a schema .graphqls file in the app/src/main/graphql/ directory with the same schema definition so that Apollo can generate the necessary models for the client.
+
+```graphqls
+# NOTE: schema file is a graphqls file, not a graphql file
+""""""
+directive @cacheControl(maxAge: Int, scope: CacheControlScope) on FIELD_DEFINITION | OBJECT | INTERFACE
+
+""""""
+type Query {
+    """"""
+    continents: [Continent]
+    """"""
+    continent(code: String): Continent
+    """"""
+    countries: [Country]
+    """"""
+    country(code: String): Country
+    """"""
+    languages: [Language]
+    """"""
+    language(code: String): Language
+}
+
+""""""
+type Continent {
+    """"""
+    code: String
+    """"""
+    name: String
+    """"""
+    countries: [Country]
+}
+
+""""""
+type Country {
+    """"""
+    code: String
+    """"""
+    name: String
+    """"""
+    capital: String
+    """"""
+    native: String
+    """"""
+    phone: String
+    """"""
+    continent: Continent
+    """"""
+    currency: String
+    """"""
+    languages: [Language]
+    """"""
+    emoji: String
+    """"""
+    emojiU: String
+    """"""
+    states: [State]
+}
+
+""""""
+type Language {
+    """"""
+    code: String
+    """"""
+    name: String
+    """"""
+    native: String
+    """"""
+    rtl: Int
+}
+
+""""""
+type State {
+    """"""
+    code: String
+    """"""
+    name: String
+    """"""
+    country: Country
+}
+
+""""""
+enum CacheControlScope {
+    """"""
+    PUBLIC
+    """"""
+    PRIVATE
+}
+
+"""The `Upload` scalar type represents a file upload."""
+scalar Upload
+```
+
+
+## 4. Define Operations: Queries / Mutations / Subscriptions / Fragments
 - in the app/src/main/graphql/com/example/graphqlcountriesapp/ we will define our queries
 - create a new GraphQL file (e.g. Countries.graphql)
+
+- Fragments are reusable pieces of query logic that can be shared across multiple queries or mutations.
+  - used for search and filter logic that is shared across multiple queries
+  - for example, if we have a search query that filters countries by name, we can define a fragment for the search logic and reuse it in multiple queries that need to filter countries by name
 
 NOTE: apollo will auto generate the necessary classes based on the queries defined in the .graphql files
 - careful using them -> treat them as DTOs and map them to your domain models
@@ -427,6 +548,150 @@ subscription OnFavoriteCountChanged($countryCode: ID!) {
     favoriteCountChanged(countryCode: $countryCode) {
     countryCode
     favoriteCount
+    }
+}
+```
+
+```kotlin
+fragment searchResultOrganizationFields on Organization {
+    name
+}
+
+fragment searchResultUserFields on User {
+    name
+    bio
+}
+
+fragment searchResultRepositoryFields on Repository {
+    name
+    owner {
+        __typename
+        ...searchResultUserFields
+        ...searchResultOrganizationFields
+    }
+}
+
+query SearchQuery {
+    search(query: "foo", type: REPOSITORY, first: 100) {
+        edges @nonnull {
+            cursor
+            textMatches {
+                property
+                fragment
+                highlights {
+                    beginIndice
+                    endIndice
+                    text
+                }
+            }
+            node @nonnull {
+                __typename
+                ...searchResultRepositoryFields
+            }
+        }
+    }
+}
+```
+
+## Data layer
+GraphQL / Apollo specific:
+- create an `ApolloClient` 
+  - usually done via DI (e.g., Hilt module) so it can be injected into repositories
+
+TODO: polish common apollo client configurations (e.g., interceptors for auth, logging, error handling, cache configuration)
+Configurations:
+1. .serverUrl: the GraphQL endpoint URL (e.g., https://countries.trevorblades.com/)
+2. .addInterceptor: add OkHttp interceptors for auth, logging, etc.
+3. .cache: configure Apollo's normalized cache (e.g., in-memory or SQLite)
+4. .fetchPolicy: set default fetch policies for queries (e.g., CacheFirst, NetworkFirst)
+5. .errorHandler: set up global error handling for GraphQL errors and network errors examples:
+
+
+```kotlin
+// Apollo Client setup without DI
+val apolloClient = ApolloClient.Builder()
+    .serverUrl("https://countries.trevorblades.com/") // set the GraphQL endpoint URL
+    .build()
+
+// Apollo Client setup with Hilt DI
+@Module
+@InstallIn(SingletonComponent::class)
+object ApolloModule {
+    @Provides
+    @Singleton
+    fun provideApolloClient(): ApolloClient {
+        return ApolloClient.Builder()
+            .serverUrl("https://countries.trevorblades.com/") // set the GraphQL endpoint URL
+            .build()
+    }
+}
+```
+
+Non-GraphQL specific (same as REST):
+- create mappers from DTOs (generated Apollo models) to domain models
+  - TODO: so i don't create DTO models in my data layer? do i base it off the graphql directory schema?
+- create a repository implementation
+
+> NOTE: if we want to filter or sort we should use a use case in the domain layer for that logic – keep the repository implementation focused on **fetching and mapping data**.
+
+```kotlin
+// Apollo Repository Implementation
+// If we switch to REST, we change this class and keep the interface the same.
+// .query(), .mutation(), .subscription() are Apollo client methods that execute the GraphQL operations defined in the .graphql files and return typed responses based on the schema and queries.
+class ApolloCountryRepositoryImpl(
+    private val apolloClient: ApolloClient
+) : ApolloCountryRepository {
+
+    override suspend fun getCountries(): List<SimpleCountry> {
+        val response = apolloClient
+            .query(CountriesQuery())
+            .execute()
+
+        return response.data
+            ?.countries
+            ?.map { it.toSimpleCountry() }
+            ?: emptyList()
+    }
+
+    override suspend fun getCountryByCode(code: String): DetailedCountry? {
+        val response = apolloClient
+            .query(CountryQuery(country_code = code))
+            .execute()
+
+        return response.data
+            ?.country
+            ?.toDetailedCountry()
+    }
+
+    override suspend fun updateFavoriteStatus(code: String, isFavorite: Boolean): DetailedCountry? {
+        val response = apolloClient
+            .mutation(ToggleFavoriteCountryMutation(countryCode = code, isFavorite = isFavorite))
+            .execute()
+
+        return response.data
+            ?.toggleFavoriteCountry
+            ?.country
+            ?.toDetailedCountry()
+    }
+
+  // Subscription example – this will return a Flow that emits updates whenever the favorite count changes for the specified country
+  // this will be different from REST since REST does not have built-in support for real-time updates, so we would need to use something like WebSockets or polling instead
+    override fun subscribeToFavoriteCountChanges(countryCode: String): Flow<FavoriteCountUpdate> {
+        return apolloClient
+            .subscription(OnFavoriteCountChangedSubscription(countryCode = countryCode))
+            .toFlow()
+            .map { response ->
+                val data = response.data?.favoriteCountChanged
+                if (data != null) {
+                    FavoriteCountUpdate(
+                        countryCode = data.countryCode,
+                        favoriteCount = data.favoriteCount
+                    )
+                } else {
+                    // Simple error case – in real apps you may want a sealed result type
+                    throw IllegalStateException("No data from subscription")
+                }
+            }
     }
 }
 ```
@@ -493,99 +758,6 @@ class GetCountriesUseCase(
         return repository
             .getCountries()
             .sortedBy { it.name } // example sorting logic
-    }
-}
-```
-
-## Data layer
-- create mappers from DTOs (generated Apollo models) to domain models
-- create an `ApolloClient`
-- create a repository implementation
-
-> NOTE: if we want to filter or sort we should use a use case in the domain layer for that logic – keep the repository implementation focused on **fetching and mapping data**.
-
-```kotlin
-// Mappers from generated GraphQL classes to domain models
-
-fun CountriesQuery.Country.toSimpleCountry(): SimpleCountry {
-    return SimpleCountry(
-        code = code,
-        name = name,
-        capital = capital ?: "N/A",
-        emoji = emoji
-    )
-}
-
-fun CountryQuery.Country.toDetailedCountry(): DetailedCountry {
-    return DetailedCountry(
-        code = code,
-        name = name,
-        capital = capital ?: "No capital",
-        emoji = emoji,
-        currency = currency ?: "No currency",
-        languages = languages.mapNotNull { it.name },
-        continent = continent.name,
-        isFavorite = isFavorite ?: false // assuming schema has this field
-    )
-}
-```
-
-```kotlin
-// Apollo Repository Implementation
-// If we switch to REST, we change this class and keep the interface the same.
-
-class ApolloCountryRepositoryImpl(
-    private val apolloClient: ApolloClient
-) : ApolloCountryRepository {
-
-    override suspend fun getCountries(): List<SimpleCountry> {
-        val response = apolloClient
-            .query(CountriesQuery())
-            .execute()
-
-        return response.data
-            ?.countries
-            ?.map { it.toSimpleCountry() }
-            ?: emptyList()
-    }
-
-    override suspend fun getCountryByCode(code: String): DetailedCountry? {
-        val response = apolloClient
-            .query(CountryQuery(country_code = code))
-            .execute()
-
-        return response.data
-            ?.country
-            ?.toDetailedCountry()
-    }
-
-    override suspend fun updateFavoriteStatus(code: String, isFavorite: Boolean): DetailedCountry? {
-        val response = apolloClient
-            .mutation(ToggleFavoriteCountryMutation(countryCode = code, isFavorite = isFavorite))
-            .execute()
-
-        return response.data
-            ?.toggleFavoriteCountry
-            ?.country
-            ?.toDetailedCountry()
-    }
-
-    override fun subscribeToFavoriteCountChanges(countryCode: String): Flow<FavoriteCountUpdate> {
-        return apolloClient
-            .subscription(OnFavoriteCountChangedSubscription(countryCode = countryCode))
-            .toFlow()
-            .map { response ->
-                val data = response.data?.favoriteCountChanged
-                if (data != null) {
-                    FavoriteCountUpdate(
-                        countryCode = data.countryCode,
-                        favoriteCount = data.favoriteCount
-                    )
-                } else {
-                    // Simple error case – in real apps you may want a sealed result type
-                    throw IllegalStateException("No data from subscription")
-                }
-            }
     }
 }
 ```
