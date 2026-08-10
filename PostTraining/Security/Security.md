@@ -4,7 +4,7 @@
   - Simplifies the sign-in and sign-up processes by automating credential storage and retrieval
   - offering a more secure alternative to manual credential handling or local storage methods, which are susceptible to security breaches.
 
-# Mobile Security — Detailed Breakdown
+# Mobile Security  Detailed Breakdown
 
 Goal: Protect user data and app integrity; comply with regulations.
 
@@ -75,7 +75,7 @@ Secrets
 ## Compliance
 PCI DSS
 TODO: what is PCI DSS? is it an acronym for something?
-- Don’t store PAN; use tokenization; rely on PCI-compliant providers
+- Dont store PAN; use tokenization; rely on PCI-compliant providers
   - TODO: what is PAN in this context?
   - TODO: what are PCI-compliant providers? why rely on them?
 - Limit scope: use web-based payment sheets when possible (e.g., Google/Apple Pay)
@@ -95,7 +95,7 @@ TODO: what is GDPR? is it an acronym for something?
   - TODO: what are STRIDE and LINDDUN?
   - TODO: how to conduct a workshop for these?
   - TODO: why use these specifically?
-- Root/jailbreak detection as signal (don’t block blindly)
+- Root/jailbreak detection as signal (dont block blindly)
   - TODO: what is root/jailbreak detection? why is it important?
   - TODO: what does "don't block blindly" mean here?
 - Obfuscation (R8/ProGuard) and integrity checks (Play Integrity/DeviceCheck)

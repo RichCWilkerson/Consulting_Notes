@@ -11,12 +11,12 @@ playstore integrity that checks that the OS and app have not been tampered with.
 there is an interface in Java, 
 
 Think of Android auth/security in **four layers**:
-1. **Identity & Tokens** – Who is the user? What are they allowed to do?
-2. **On-device Authentication** – How does the user unlock the app or confirm actions?
-3. **Data Protection** – How do we protect data at rest and in transit?
-4. **Session & Access Control** – How do we manage logins, sessions, and permissions over time?
+1. **Identity & Tokens**  Who is the user? What are they allowed to do?
+2. **On-device Authentication**  How does the user unlock the app or confirm actions?
+3. **Data Protection**  How do we protect data at rest and in transit?
+4. **Session & Access Control**  How do we manage logins, sessions, and permissions over time?
 
-Below is a grouped overview tuned for Android, with high-level explanations, pros/cons, and what’s considered standard today.
+Below is a grouped overview tuned for Android, with high-level explanations, pros/cons, and whats considered standard today.
 
 ---
 
@@ -37,7 +37,7 @@ GDPR - EU data protection and privacy regulation.
   - Many enterprise security reviews will reference OWASP Top 10 or MASVS as target standards.
 - **How to use it as an Android dev:**
   - Map your practices in this file back to OWASP items: secure storage, strong auth, TLS, logging without secrets, etc.
-  - When talking to security teams, you can say "we align with OWASP guidance for mobile" and be specific about which risks you’re addressing.
+  - When talking to security teams, you can say "we align with OWASP guidance for mobile" and be specific about which risks youre addressing.
 
 HTTPS - defined in the manifest file to ensure all network traffic is secure.
 - enforce HTTPS by default it is true (HTTPS) `android:usesCleartextTraffic="true"` in the application tag of the AndroidManifest.xml file.
@@ -79,7 +79,7 @@ HTTPS - defined in the manifest file to ensure all network traffic is secure.
 - **Current standard:**
   - **Use the Authorization Code flow with PKCE** for mobile apps; avoid implicit flows.
 
-### OpenID Connect (OIDC) – Identity on top of OAuth2
+### OpenID Connect (OIDC)  Identity on top of OAuth2
 - **What it is:**
   - A thin layer on top of OAuth2 that adds **ID tokens** and a standard way to get user profile data.
   - Answers: "Who is this user?" not just "Is this request allowed?".
@@ -112,13 +112,13 @@ HTTPS - defined in the manifest file to ensure all network traffic is secure.
 - **What it is:**
   - Android/Google APIs to simplify sign-in: passwords, passkeys, federated sign-in.
   - Wraps OAuth/OIDC flows and password managers.
-- **Where you see it:**
+- **Where you see it in Android:**
   - "Sign in with Google", passkeys, one-tap sign-in.
 - **Pros:**
   - Better UX, fewer password flows.
   - Integrates with device-level identity features.
 - **Cons:**
-  - Ties you more closely to Google’s ecosystem.
+  - Ties you more closely to Googles ecosystem.
 - **Current standard:**
   - Recommended way to implement modern sign-in UX on Android (especially passkeys).
   - Not for sensitive enterprise apps that need custom IdPs (Bank, Healthcare).
@@ -127,16 +127,16 @@ HTTPS - defined in the manifest file to ensure all network traffic is secure.
 - **What it is:**
   - Managed authentication service by Google (email/password, phone, social providers).
 - **Where you see it:**
-  - Startups, smaller apps, or when you don’t want to manage your own auth backend.
+  - Startups, smaller apps, or when you dont want to manage your own auth backend.
 - **Pros:**
   - Quick to integrate; supports multiple identity providers.
 - **Cons:**
   - Ties you into Firebase ecosystem; less control than a custom OIDC server.
 
 ### Enterprise / Legacy Identity Concepts (Know at High Level)
-- **SAML** – XML-based single sign-on protocol (often between enterprise IdP and web backends). Mobile apps usually get OAuth/OIDC tokens from a gateway instead of dealing with SAML directly.
-- **SSO (Single Sign-On)** – Pattern where user signs in once and can access multiple apps. Typically implemented today using OAuth2/OIDC (or SAML in older systems).
-- **LDAP, Kerberos** – Backend/enterprise auth for internal systems. Mobile apps usually only see the resulting access tokens, not these protocols directly.
+- **SAML**  XML-based single sign-on protocol (often between enterprise IdP and web backends). Mobile apps usually get OAuth/OIDC tokens from a gateway instead of dealing with SAML directly.
+- **SSO (Single Sign-On)**  Pattern where user signs in once and can access multiple apps. Typically implemented today using OAuth2/OIDC (or SAML in older systems).
+- **LDAP, Kerberos**  Backend/enterprise auth for internal systems. Mobile apps usually only see the resulting access tokens, not these protocols directly.
 
 ---
 
@@ -203,7 +203,7 @@ HTTPS - defined in the manifest file to ensure all network traffic is secure.
 #### EncryptedSharedPreferences / DataStore Encryption
 - **What it is:**
   - Jetpack Security APIs (`EncryptedSharedPreferences`) and DataStore with encryption wrappers.
-  - Use Keystore-managed master key to encrypt key–values.
+  - Use Keystore-managed master key to encrypt keyvalues.
     - encrypt data at rest with key-value or proto datastore using a master key from keystore
     - encrypt values accessed with Keystore keys
 - **Use in Android:**
@@ -260,7 +260,7 @@ HTTPS - defined in the manifest file to ensure all network traffic is secure.
 
 #### SSL Pinning (Certificate / Public Key Pinning)
 - **What it is:**
-  - Extra check that the server’s certificate or public key matches a known set of pins.
+  - Extra check that the servers certificate or public key matches a known set of pins.
 - **Why:**
   - Protects against some man-in-the-middle (MITM) attacks, even if a CA is compromised.
     - CA = Certificate Authority (issues SSL certificates to websites and services)
@@ -274,7 +274,7 @@ HTTPS - defined in the manifest file to ensure all network traffic is secure.
 
 #### End-to-End Encryption
 - **What it is:**
-  - Data is encrypted on the client and only decrypted on the final recipient; intermediaries (even your own servers) can’t read it.
+  - Data is encrypted on the client and only decrypted on the final recipient; intermediaries (even your own servers) cant read it.
 - **Use in Android:**
   - Messaging apps, highly sensitive fields.
 - **Pros:**
@@ -317,6 +317,7 @@ HTTPS - defined in the manifest file to ensure all network traffic is secure.
 - **Scope-based access:**
   - Tokens have scopes like `read:accounts`, `write:payments`.
   - Client requests minimal scopes needed; server enforces them.
+
 
 ---
 

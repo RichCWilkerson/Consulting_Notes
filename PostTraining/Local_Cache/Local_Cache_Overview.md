@@ -1,4 +1,12 @@
 # Overview of Databases in Android Development
+
+## Related deep dives
+
+- [Synchronization](Synchronization.md) — schedulers versus coordinators, continuation tokens, transactions, retry policy, and Wi-Fi-first fallback.
+- [Local data security](Local_Data_Security.md) — sandboxing, backup exclusion, Keystore, database encryption, and threat modeling.
+- [Offline-first design](Offline_First_Design.md) — source-of-truth and repository patterns.
+- [Room](Room.md) — entities, DAOs, migrations, transactions, and common pitfalls.
+
 - Local databases are primarily used for **caching, local storage, and offline capabilities**.
 - Common categories in Android:
   - **SQL-based**: SQLite, Room, SQLDelight.
